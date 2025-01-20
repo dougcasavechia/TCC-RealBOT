@@ -51,8 +51,13 @@ def gerenciar_mensagem_recebida(contato, texto):
         processar_medida_vao_final(contato, texto, nome_cliente)
     elif status == "escolhendo_tipo_produto":
         processar_selecao_produto(contato, texto, nome_cliente)
+    elif status == "escolhendo_projeto":
+        processar_selecao_projeto(contato, texto, nome_cliente)
+    elif status == "coletando_altura":
+        processar_altura(contato, texto, nome_cliente)  # Adiciona processamento de altura
+    elif status == "coletando_largura":
+        processar_largura(contato, texto, nome_cliente)  # Adiciona processamento de largura
     else:
-        # Estado desconhecido ou não tratado
         print(f"[WARNING] Estado desconhecido para {contato}: {status}")
         enviar_mensagem(contato, "Desculpe, ocorreu um problema. Vamos reiniciar sua interação.")
         iniciar_conversa(contato, nome_cliente)
@@ -106,22 +111,59 @@ def processar_medida_vao_final(contato, text, nome_cliente):
         repetir_menu(contato, nome_cliente)
 
 
-def processar_selecao_produto(contato, text, nome_cliente):
+def processar_selecao_produto(contato, texto, nome_cliente):
     """
     Processa a seleção de produtos pelo usuário.
     """
-    products = carregar_tabela_tipo_produto()
+    produtos = carregar_tabela_tipo_produto()  # Certifique-se de carregar a tabela de tipos de produto
     try:
-        choice = int(text) - 1
-        if 0 <= choice < len(products):
-            selected_product = products[choice]
-            enviar_mensagem(contato, f"Você escolheu o produto: {selected_product}. Estamos processando sua solicitação.")
-            salvar_mensagem_em_arquivo(contato, nome_cliente, f"Bot: Produto escolhido: {selected_product}.")
-            finalizar_conversa(contato, nome_cliente)
+        escolha = int(texto) - 1
+        if 0 <= escolha < len(produtos):
+            produto_selecionado = produtos[escolha]
+            id_tipo_produto = escolha + 1  # Assumindo que o índice corresponde ao ID
+            enviar_mensagem(contato, f"Você escolheu o tipo de produto: {produto_selecionado}.")
+            salvar_mensagem_em_arquivo(contato, nome_cliente, f"Bot: Tipo de produto escolhido: {produto_selecionado}.")
+            
+            # Verificar se o cliente escolheu medida final ou medida de vão
+            medida_final = 1 if status_usuario.get(contato) == "escolhendo_medida_vao_ou_final" else 0
+
+            # Chamar o menu de projetos
+            apresentar_menu_projetos(contato, nome_cliente, id_tipo_produto, medida_final)
         else:
             raise ValueError("Opção inválida.")
     except (ValueError, IndexError):
         repetir_menu(contato, nome_cliente)
+
+def processar_selecao_projeto(contato, texto, nome_cliente):
+    """
+    Processa a seleção de projetos pelo usuário.
+    """
+    ultimo_menu = ultimo_menu_usuario.get(contato)
+
+    if not ultimo_menu:
+        enviar_mensagem(contato, "Não conseguimos recuperar as opções anteriores. Reiniciaremos sua interação.")
+        iniciar_conversa(contato, nome_cliente)
+        return
+
+    opcoes = ultimo_menu.split("\n")
+
+    try:
+        escolha = int(texto) - 1
+        if 0 <= escolha < len(opcoes):
+            projeto_selecionado = opcoes[escolha]
+            enviar_mensagem(contato, f"Você escolheu o projeto: {projeto_selecionado}.")
+            salvar_mensagem_em_arquivo(contato, nome_cliente, f"Bot: Projeto escolhido: {projeto_selecionado}.")
+
+            # Solicitar altura como próximo passo
+            tipo_medida = "final" if informacoes_cliente[contato].get("medida_final") else "vão"
+            solicitar_altura(contato, nome_cliente, tipo_medida)
+        else:
+            raise ValueError("Opção inválida.")
+    except (ValueError, IndexError):
+        enviar_mensagem(contato, "Desculpe, opção inválida. Escolha uma das opções abaixo:")
+        enviar_mensagem(contato, ultimo_menu)
+        salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Solicitou nova escolha de projeto.")
+
 
 
 def apresentar_menu_produtos(contato, nome_cliente):
@@ -142,18 +184,62 @@ def apresentar_menu_produtos(contato, nome_cliente):
         finalizar_conversa(contato, nome_cliente)
 
 
+def apresentar_menu_projetos(contato, nome_cliente, id_tipo_produto, medida_final):
+    """
+    Apresenta o menu de projetos com base no tipo de produto e na medida selecionada.
+
+    :param contato: Contato do cliente
+    :param nome_cliente: Nome do cliente
+    :param id_tipo_produto: ID do tipo de produto escolhido
+    :param medida_final: Booleano (0 para medida de vão, 1 para medida final)
+    """
+    from services.product_service import filtrar_projetos  # Certifique-se de importar a função aqui
+
+    projetos = filtrar_projetos(id_tipo_produto, medida_final)
+
+    if projetos:
+        menu = "\n".join([f"{i + 1}. {projeto}" for i, projeto in enumerate(projetos)])
+        enviar_mensagem(contato, "Escolha o projeto desejado:")
+        enviar_mensagem(contato, menu)
+        status_usuario[contato] = "escolhendo_projeto"
+        ultimo_menu_usuario[contato] = menu
+        salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Apresentou menu de projetos.")
+    else:
+        enviar_mensagem(contato, "Não há projetos disponíveis para sua escolha. Tente novamente mais tarde.")
+        salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Nenhum projeto disponível.")
+        finalizar_conversa(contato, nome_cliente)
+
+
 def repetir_menu(contato, nome_cliente):
     """
-    Reenvia o último menu exibido ao usuário com base no estado atual.
+    Reenvia a solicitação ou o menu apropriado com base no estado atual do usuário.
     """
-    ultimo_menu = ultimo_menu_usuario.get(contato)
-    if ultimo_menu:
-        enviar_mensagem(contato, "Desculpe, não entendi. Escolha uma das opções:")
-        enviar_mensagem(contato, ultimo_menu)
-        salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Repetiu o menu apropriado.")
+    status = status_usuario.get(contato)
+    print("####################################")
+    print(f"################## O status está em {status} ##################")
+    print("####################################")
+
+    if status == "coletando_altura":
+        tipo_medida = "final" if informacoes_cliente[contato].get("medida_final") else "vão"
+        enviar_mensagem(contato, f"Você está inativo. Por favor, informe a medida da altura em milímetros (mm) ({tipo_medida}):")
+        salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Repetiu solicitação de altura.")
+    elif status == "coletando_largura":
+        tipo_medida = "final" if informacoes_cliente[contato].get("medida_final") else "vão"
+        altura = informacoes_cliente[contato].get("altura", "não registrada")
+        enviar_mensagem(contato, f"Você está inativo. Altura registrada: {altura} mm. Informe a medida da largura em milímetros (mm) ({tipo_medida}):")
+        salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Repetiu solicitação de largura.")
     else:
-        # Caso o menu não esteja salvo, envia o menu inicial como fallback
-        iniciar_conversa(contato, nome_cliente)
+        # Caso o estado não seja altura ou largura, reenvia o último menu
+        ultimo_menu = ultimo_menu_usuario.get(contato)
+        if ultimo_menu:
+            enviar_mensagem(contato, "Você está inativo. Escolha uma das opções abaixo:")
+            enviar_mensagem(contato, ultimo_menu)
+            salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Repetiu o menu apropriado.")
+        else:
+            # Reinicia a interação se não houver estado conhecido
+            iniciar_conversa(contato, nome_cliente)
+
+
 
 
 def finalizar_conversa(contato, nome_cliente):
@@ -172,3 +258,70 @@ def limpar_dados_usuario(contato):
     status_usuario.pop(contato, None)
     ultima_interacao_usuario.pop(contato, None)
     ultimo_menu_usuario.pop(contato, None)
+
+
+def solicitar_altura(contato, nome_cliente, tipo_medida):
+    """
+    Solicita ao cliente a medida da altura.
+    """
+    enviar_mensagem(contato, f"Por favor, informe a medida da altura em milímetros (mm) ({tipo_medida}):")
+    status_usuario[contato] = "coletando_altura"
+    salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Solicitou medida da altura (mm).")
+
+
+def solicitar_largura(contato, nome_cliente, tipo_medida, altura):
+    """
+    Solicita ao cliente a medida da largura.
+    """
+    enviar_mensagem(contato, f"Altura registrada: {altura} mm.")
+    enviar_mensagem(contato, f"Agora, informe a medida da largura em milímetros (mm) ({tipo_medida}):")
+    status_usuario[contato] = "coletando_largura"
+    salvar_mensagem_em_arquivo(contato, nome_cliente, f"Bot: Solicitou medida da largura (mm) (Altura: {altura} mm).")
+
+
+def encerrar_fluxo(contato, nome_cliente, altura, largura):
+    """
+    Finaliza o fluxo após coletar as medidas.
+    """
+    enviar_mensagem(contato, f"Medidas registradas:\nAltura: {altura} mm\nLargura: {largura} mm.")
+    enviar_mensagem(contato, "Obrigado! Seu fluxo foi encerrado. Caso precise de algo, estamos à disposição!")
+    salvar_mensagem_em_arquivo(contato, nome_cliente, f"Bot: Fluxo encerrado com medidas (Altura: {altura} mm, Largura: {largura} mm).")
+    limpar_dados_usuario(contato)
+
+
+
+def processar_altura(contato, texto, nome_cliente):
+    """
+    Processa a medida da altura fornecida pelo cliente.
+    """
+    try:
+        altura = int(texto)  # Tentar converter a entrada para inteiro
+        if altura <= 0:
+            raise ValueError("A medida deve ser um número positivo.")
+
+        # Salvar a altura e solicitar a largura
+        informacoes_cliente[contato]["altura"] = altura
+        tipo_medida = "final" if informacoes_cliente[contato].get("medida_final") else "vão"
+        solicitar_largura(contato, nome_cliente, tipo_medida, altura)
+    except ValueError:
+        enviar_mensagem(contato, "Altura inválida. Por favor, informe a medida da altura como um número inteiro positivo em milímetros (mm).")
+
+
+
+def processar_largura(contato, texto, nome_cliente):
+    """
+    Processa a medida da largura fornecida pelo cliente e encerra o fluxo.
+    """
+    try:
+        largura = int(texto)  # Tentar converter a entrada para inteiro
+        if largura <= 0:
+            raise ValueError("A medida deve ser um número positivo.")
+
+        # Salvar a largura e encerrar o fluxo
+        informacoes_cliente[contato]["largura"] = largura
+        altura = informacoes_cliente[contato]["altura"]
+        encerrar_fluxo(contato, nome_cliente, altura, largura)
+    except ValueError:
+        enviar_mensagem(contato, "Largura inválida. Por favor, informe a medida da largura como um número inteiro positivo em milímetros (mm).")
+
+

@@ -17,11 +17,26 @@ def monitor_inactivity():
             # Envia aviso de inatividade se o tempo exceder o limite e ainda não tiver marcado como inativo
             if horario_atual - ultima_interacao > TIMEOUT_WARNING and not (status and status.startswith("inativo_")):
                 print(f"[Monitor] Enviando aviso de inatividade para {contato}")
-                enviar_mensagem(contato, "Você está inativo. Essa conversa será encerrada em breve se você não optar por uma das opções abaixo:")
-                ultimo_menu = ultimo_menu_usuario.get(contato, "Ainda não há opções disponíveis.")
-                enviar_mensagem(contato, ultimo_menu)
-                salvar_mensagem_em_arquivo(contato, informacoes_cliente.get(contato, {}).get("nome_cliente", "Desconhecido"), "Bot: Aviso de inatividade.")
-                status_usuario[contato] = f"inativo_{status}"  # Marca o estado atual como inativo
+
+                # Determina o que repetir com base no estado atual
+                if status == "coletando_altura":
+                    tipo_medida = "final" if informacoes_cliente[contato].get("medida_final") else "vão"
+                    enviar_mensagem(contato, f"Você está inativo. Por favor, informe a medida da altura em milímetros (mm) ({tipo_medida}):")
+                    salvar_mensagem_em_arquivo(contato, informacoes_cliente.get(contato, {}).get("nome_cliente", "Desconhecido"), "Bot: Repetiu solicitação de altura (inatividade).")
+                elif status == "coletando_largura":
+                    tipo_medida = "final" if informacoes_cliente[contato].get("medida_final") else "vão"
+                    altura = informacoes_cliente[contato].get("altura", "não registrada")
+                    enviar_mensagem(contato, f"Você está inativo. Altura registrada: {altura} mm. Informe a medida da largura em milímetros (mm) ({tipo_medida}):")
+                    salvar_mensagem_em_arquivo(contato, informacoes_cliente.get(contato, {}).get("nome_cliente", "Desconhecido"), "Bot: Repetiu solicitação de largura (inatividade).")
+                else:
+                    # Repetir o último menu, se disponível
+                    ultimo_menu = ultimo_menu_usuario.get(contato, "Ainda não há opções disponíveis.")
+                    enviar_mensagem(contato, "Você está inativo. Essa conversa será encerrada em breve se você não optar por uma das opções abaixo:")
+                    enviar_mensagem(contato, ultimo_menu)
+                    salvar_mensagem_em_arquivo(contato, informacoes_cliente.get(contato, {}).get("nome_cliente", "Desconhecido"), "Bot: Aviso de inatividade.")
+
+                # Marca o estado atual como inativo
+                status_usuario[contato] = f"inativo_{status}"
 
             # Encerra a conversa se o tempo total de inatividade for excedido
             elif horario_atual - ultima_interacao > TIMEOUT_WARNING + TIMEOUT_FINAL:
@@ -32,6 +47,7 @@ def monitor_inactivity():
                 limpar_dados_usuario(contato)
 
         time.sleep(5)
+
 
 
 def limpar_dados_usuario(contato):
