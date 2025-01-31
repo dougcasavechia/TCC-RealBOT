@@ -28,6 +28,9 @@ def monitor_inactivity():
                     altura = informacoes_cliente[contato].get("altura", "não registrada")
                     enviar_mensagem(contato, f"Você está inativo. Altura registrada: {altura} mm. Informe a medida da largura em milímetros (mm) ({tipo_medida}):")
                     salvar_mensagem_em_arquivo(contato, informacoes_cliente.get(contato, {}).get("nome_cliente", "Desconhecido"), "Bot: Repetiu solicitação de largura (inatividade).")
+                elif status == "coletando_quantidade":
+                    enviar_mensagem(contato, "Você está inativo. Quantas unidades você deseja para este projeto?")
+                    salvar_mensagem_em_arquivo(contato, informacoes_cliente.get(contato, {}).get("nome_cliente", "Desconhecido"), "Bot: Repetiu solicitação de quantidade (inatividade).")
                 else:
                     # Repetir o último menu, se disponível
                     ultimo_menu = ultimo_menu_usuario.get(contato, "Ainda não há opções disponíveis.")
@@ -47,7 +50,6 @@ def monitor_inactivity():
                 limpar_dados_usuario(contato)
 
         time.sleep(5)
-
 
 
 def limpar_dados_usuario(contato):

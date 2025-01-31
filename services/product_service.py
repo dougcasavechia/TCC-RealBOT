@@ -31,7 +31,7 @@ def filtrar_projetos(id_tipo_produto, medida_final):
 
     :param id_tipo_produto: ID do tipo de produto selecionado
     :param medida_final: Booleano (0 para medida de vão, 1 para medida final)
-    :return: Lista de projetos filtrados
+    :return: Lista de dicionários com os projetos filtrados
     """
     df = carregar_tabela_projetos()
 
@@ -45,6 +45,8 @@ def filtrar_projetos(id_tipo_produto, medida_final):
         (df["medida_final"] == medida_final)
     ]
 
-    # Retornar apenas as descrições de projeto
-    return projetos_filtrados["descricao_projeto"].tolist()
+    # Transformar os projetos filtrados em uma lista de dicionários
+    return projetos_filtrados.to_dict("records")
+
+
 
