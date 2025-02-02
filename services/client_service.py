@@ -1,25 +1,49 @@
 import pandas as pd
 from config import CLIENT_FILE_PATH
+from logger import logger  # Importando nosso logger
 
-def load_informacoes_dos_clientes():
+
+def carregar_informacoes_dos_clientes():
     """
     Carrega os dados dos clientes de um arquivo Excel.
     """
     try:
         df = pd.read_excel(CLIENT_FILE_PATH, dtype={'celular': str})
+        logger.info("Clientes carregados com sucesso.")
         return df
+    except FileNotFoundError:
+        logger.error(f"Arquivo não encontrado: {CLIENT_FILE_PATH}")
     except Exception as e:
-        print(f"Erro ao carregar clientes: {e}")
-        return pd.DataFrame()
+        logger.exception(f"Erro ao carregar clientes: {e}")
+    
+    return pd.DataFrame()  # Retorna um DataFrame vazio se houver erro
 
+
+# Apenas mantenha a função carregada no mesmo arquivo
 def buscar_cliente_por_telefone(contato):
     """
-    Verifica se o número está cadastrado no Excel e retorna os dados.
+    Busca um cliente pelo número de telefone no Excel.
     """
-    informacoes_dos_clientes = load_informacoes_dos_clientes()
+
+    logger.debug(f"🔍 Buscando cliente pelo telefone: {contato}")
+
+    informacoes_dos_clientes = carregar_informacoes_dos_clientes()  # Agora funciona corretamente
+
     if informacoes_dos_clientes.empty:
+        logger.warning("⚠️ Tentativa de busca em um banco de clientes vazio.")
         return None
-    client = informacoes_dos_clientes.loc[informacoes_dos_clientes['celular'] == contato]
-    if not client.empty:
-        return client.iloc[0].to_dict()
+
+    informacoes_dos_clientes['celular'] = informacoes_dos_clientes['celular'].astype(str).str.strip()
+    contato = str(contato).strip()  
+
+    cliente = informacoes_dos_clientes.loc[informacoes_dos_clientes['celular'] == contato]
+
+    if not cliente.empty:
+        logger.info(f"✅ Cliente encontrado: {contato}")
+        return cliente.iloc[0].to_dict()
+
+    logger.warning(f"❌ Cliente não encontrado: {contato}")
     return None
+
+
+
