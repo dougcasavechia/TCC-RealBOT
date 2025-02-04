@@ -14,38 +14,38 @@ def monitor_inactivity():
             ultima_interacao = global_state.ultima_interacao_usuario[contato]
             status = global_state.status_usuario.get(contato)
 
-            # Se o usuário estiver inativo, envia um aviso
-            if horario_atual - ultima_interacao > TIMEOUT_WARNING and not (status and status.startswith("inativo_")):
+            # Se o usuário estiver inativo e ainda não recebeu um aviso
+            if horario_atual - ultima_interacao > TIMEOUT_WARNING and status and not status.startswith("inativo_"):
                 enviar_aviso_inatividade(contato, status)
 
-            # Se o usuário continuar inativo, encerra a conversa
+            # Se o usuário continuar inativo após o aviso, encerra a conversa
             elif horario_atual - ultima_interacao > TIMEOUT_WARNING + TIMEOUT_FINAL:
                 encerrar_conversa_por_inatividade(contato)
 
         time.sleep(5)
+
 
 def enviar_aviso_inatividade(contato, status):
     """
     Envia um aviso de inatividade ao usuário com base no estado atual.
     """
     nome_cliente = global_state.informacoes_cliente.get(contato, {}).get("nome_cliente", "Desconhecido")
+    ultimo_menu = global_state.ultimo_menu_usuario.get(contato, [])
 
-    if status == "coletando_altura":
-        tipo_medida = "final" if global_state.informacoes_cliente[contato].get("medida_final") else "vão"
-        enviar_mensagem(contato, f"Você está inativo. Informe a medida da altura em milímetros (mm) ({tipo_medida}):")
-    elif status == "coletando_largura":
-        tipo_medida = "final" if global_state.informacoes_cliente[contato].get("medida_final") else "vão"
-        altura = global_state.informacoes_cliente[contato].get("altura", "não registrada")
-        enviar_mensagem(contato, f"Você está inativo. Altura registrada: {altura} mm. Informe a largura em milímetros (mm) ({tipo_medida}):")
-    elif status == "coletando_quantidade":
-        enviar_mensagem(contato, "Você está inativo. Quantas unidades você deseja para este projeto?")
+    if ultimo_menu:
+        # Formatar o menu corretamente
+        menu_formatado = "\n".join([f"{i + 1}. {opcao}" for i, opcao in enumerate(ultimo_menu)])
+        enviar_mensagem(contato, "Você está inativo. Por favor, escolha uma das opções listadas abaixo:")
+        enviar_mensagem(contato, menu_formatado)
+        salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Aviso de inatividade com menu enviado.")
     else:
-        ultimo_menu = global_state.ultimo_menu_usuario.get(contato, "Ainda não há opções disponíveis.")
-        enviar_mensagem(contato, "Você está inativo. Essa conversa será encerrada em breve se você não responder:")
-        enviar_mensagem(contato, ultimo_menu)
+        enviar_mensagem(contato, "Você está inativo, mas ainda não há opções disponíveis.")
+        salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Aviso de inatividade sem menu.")
 
-    salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Aviso de inatividade.")
-    global_state.status_usuario[contato] = f"inativo_{status}"
+    # Marcar o estado como "inativo_<status>"
+    if status and not status.startswith("inativo_"):
+        global_state.status_usuario[contato] = f"inativo_{status}"
+
 
 def encerrar_conversa_por_inatividade(contato):
     """
@@ -55,7 +55,6 @@ def encerrar_conversa_por_inatividade(contato):
         enviar_mensagem(contato, "Conversa encerrada por inatividade. Para reiniciar, envie qualquer mensagem.")
         nome_cliente = global_state.informacoes_cliente.get(contato, {}).get("nome_cliente", "Desconhecido")
         salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Conversa encerrada por inatividade.")
-    
+
+    # Limpar os dados do usuário
     global_state.limpar_dados_usuario(contato)
-
-

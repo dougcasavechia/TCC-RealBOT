@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from services.message_handler import gerenciar_mensagem_recebida
-from logger import logger  # Usando o logger centralizado
+from logger import logger  # Logger centralizado para o projeto
 
 webhook_bp = Blueprint('webhook', __name__)
 
@@ -10,22 +10,25 @@ def webhook():
         # Extrair dados do payload
         data = request.json
         if not data:
+            logger.warning("Payload ausente.")
             return jsonify({"status": "error", "message": "Payload ausente"}), 400
 
         contato = data.get('from', '').split('@')[0]
         texto = data.get('body', '').strip()
 
         if not contato or not texto:
+            logger.warning("Dados insuficientes no payload.")
             return jsonify({"status": "error", "message": "Dados insuficientes no payload"}), 400
 
+        logger.info(f"📩 Webhook ativado - Contato: {contato}")
         logger.debug(f"Mensagem recebida de {contato}: {texto}")
 
         # Processar a mensagem recebida
         gerenciar_mensagem_recebida(contato, texto)
 
+        logger.info(f"✅ Mensagem processada com sucesso para {contato}.")
         return jsonify({"status": "success"}), 200
 
     except Exception as e:
-        logger.error(f"Erro no webhook: {e}", exc_info=True)
+        logger.error(f"❌ Erro no webhook: {e}", exc_info=True)
         return jsonify({"status": "error", "message": "Erro interno no servidor"}), 500
-
