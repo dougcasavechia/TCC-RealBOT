@@ -24,25 +24,47 @@ def monitor_inactivity():
 
         time.sleep(5)
 
+def atualizar_ultima_atividade(contato):
+    """
+    Atualiza o tempo da última atividade do usuário.
+    """
+    global_state.ultima_interacao_usuario[contato] = time.time()
+
 
 def enviar_aviso_inatividade(contato, status):
     """
-    Envia um aviso de inatividade ao usuário com base no estado atual.
+    Envia um aviso de inatividade ao usuário com base no estado atual correto.
     """
     nome_cliente = global_state.informacoes_cliente.get(contato, {}).get("nome_cliente", "Desconhecido")
-    ultimo_menu = global_state.ultimo_menu_usuario.get(contato, [])
 
-    if ultimo_menu:
-        # Formatar o menu corretamente
-        menu_formatado = "\n".join([f"{i + 1}. {opcao}" for i, opcao in enumerate(ultimo_menu)])
-        enviar_mensagem(contato, "Você está inativo. Por favor, escolha uma das opções listadas abaixo:")
-        enviar_mensagem(contato, menu_formatado)
-        salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Aviso de inatividade com menu enviado.")
+    if status in ["aguardando_altura", "aguardando_largura", "aguardando_quantidade"]:
+        # ✅ Se o usuário estava inserindo medidas, refazemos a pergunta correta
+        if status == "aguardando_altura":
+            enviar_mensagem(contato, "Você está inativo. Seu fluxo será encerrado em XXXX segundos se não interagir com o bot.")
+            enviar_mensagem(contato, "Por favor, informe a altura em milímetros:")
+        elif status == "aguardando_largura":
+            enviar_mensagem(contato, "Você está inativo. Seu fluxo será encerrado em XXXX segundos se não interagir com o bot.")
+            enviar_mensagem(contato, "Por favor, informe a largura em milímetros:")
+        elif status == "aguardando_quantidade":
+            enviar_mensagem(contato, "Você está inativo. Seu fluxo será encerrado em XXXX segundos se não interagir com o bot.")
+            enviar_mensagem(contato, "Quantas unidades desse projeto você deseja?")
+        
+        salvar_mensagem_em_arquivo(contato, nome_cliente, f"Bot: Aviso de inatividade para {status}.")
+    
     else:
-        enviar_mensagem(contato, "Você está inativo, mas ainda não há opções disponíveis.")
-        salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Aviso de inatividade sem menu.")
+        # ✅ Se o usuário estava em um menu dinâmico, reenviamos o último menu corretamente
+        ultimo_menu = global_state.ultimo_menu_usuario.get(contato, [])
+        if ultimo_menu:
+            menu_formatado = "\n".join([f"{i + 1}. {opcao}" for i, opcao in enumerate(ultimo_menu)])
+            enviar_mensagem(contato, "Você está inativo. Seu fluxo será encerrado em XXXX segundos se não interagir com o bot.")
+            enviar_mensagem(contato, "Por favor, escolha uma das opções listadas abaixo:")
+            enviar_mensagem(contato, menu_formatado)
+            salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Aviso de inatividade com menu enviado.")
+        else:
+            enviar_mensagem(contato, "Você está inativo, mas ainda não há opções disponíveis.")
+            salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Aviso de inatividade sem menu.")
 
-    # Marcar o estado como "inativo_<status>"
+    # ✅ Marcar o estado como "inativo_<status>" para que possamos retomá-lo corretamente depois
     if status and not status.startswith("inativo_"):
         global_state.status_usuario[contato] = f"inativo_{status}"
 

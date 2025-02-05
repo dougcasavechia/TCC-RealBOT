@@ -1,16 +1,28 @@
 import pandas as pd
+import os
+from config import TABLE_FILE_PATH
+from logger import logger
 
-# Função para carregar a tabela
 def carregar_tabela():
-    return pd.read_excel("nova_tabela.xlsx")
+    """Carrega a tabela de projetos do arquivo Excel."""
+    if not os.path.exists(TABLE_FILE_PATH):
+        logger.error(f"Arquivo de tabela não encontrado: {TABLE_FILE_PATH}")
+        return pd.DataFrame()  # Retorna DataFrame vazio se não encontrar o arquivo
+    try:
+        return pd.read_excel(TABLE_FILE_PATH)
+    except Exception as e:
+        logger.error(f"Erro ao carregar a tabela: {e}")
+        return pd.DataFrame()
 
-# Função para filtrar a tabela com base nas definições
 def filtrar_tabela(tabela, definicao_1=None, definicao_2=None, definicao_3=None):
-    if definicao_1:
-        tabela = tabela[tabela["definicao_1"] == definicao_1]
-    if definicao_2:
-        tabela = tabela[tabela["definicao_2"] == definicao_2]
-    if definicao_3:
-        tabela = tabela[tabela["definicao_3"] == definicao_3]
+    """Filtra a tabela de projetos conforme as definições informadas."""
+    colunas_validas = {"definicao_1", "definicao_2", "definicao_3"}
+    colunas_presentes = set(tabela.columns)
+
+    for definicao, coluna in zip([definicao_1, definicao_2, definicao_3], colunas_validas):
+        if definicao and coluna in colunas_presentes:
+            tabela = tabela[tabela[coluna] == definicao]
+
     return tabela
+
 
