@@ -4,19 +4,22 @@ import requests
 from config import BASE_URL, CONVERSATIONS_DIR
 from logger import logger  # Usando o módulo de logs
 
-def enviar_mensagem(contato, mensagem):
-    """
-    Envia uma mensagem para o número informado via WPPConnect.
-    """
+import time
+
+def enviar_mensagem(contato, mensagem, tentativas=3, intervalo=2):
     url = f"{BASE_URL}/whatsapp-session/sendText"
     payload = {"phone": contato, "message": mensagem}
-
-    try:
-        response = requests.post(url, json=payload)
-        response.raise_for_status()  # Levanta um erro se a resposta não for 200 OK
-        logger.info(f"✅ Mensagem enviada para {contato}: {mensagem}")
-    except requests.exceptions.RequestException as e:
-        logger.error(f"❌ Erro ao enviar mensagem para {contato}: {e}")
+    
+    for tentativa in range(tentativas):
+        try:
+            response = requests.post(url, json=payload)
+            response.raise_for_status()
+            logger.info(f"✅ Mensagem enviada para {contato}: {mensagem}")
+            return True
+        except requests.exceptions.RequestException as e:
+            logger.error(f"❌ Erro ao enviar mensagem (tentativa {tentativa+1}/{tentativas}): {e}")
+            time.sleep(intervalo)  # Espera antes de tentar novamente
+    return False
 
 def salvar_mensagem_em_arquivo(contato, nome_cliente, mensagem):
     """

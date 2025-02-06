@@ -12,7 +12,8 @@ INPUT_DIR = os.getenv("INPUT_DIR", os.path.join(BASE_DIR, "input"))
 # Arquivos
 CLIENT_FILE_PATH = os.path.join(INPUT_DIR, "cliente.xlsx")
 PROJECT_FILE_PATH = os.path.join(INPUT_DIR, "projetos.xlsx")
-TABLE_FILE_PATH = os.path.join(INPUT_DIR, "nova_tabela.xlsx")
+MATERIAL_FILE_PATH = os.path.join(INPUT_DIR, "materia_prima.xlsx")
+
 
 # Configurações de tempo
 TIMEOUT_WARNING = int(os.getenv("TIMEOUT_WARNING", 10))

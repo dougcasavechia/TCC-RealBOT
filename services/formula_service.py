@@ -1,3 +1,5 @@
+from logger import logger
+
 FORMULAS_PROJETOS = {
     1: {
         "nome": "Fórmula para peças sem conjunto",
@@ -35,26 +37,29 @@ def obter_formula_por_id(id_projeto):
 
 def calcular_pecas(id_formula, altura, largura):
     """
-    Calcula as dimensões das peças com base na fórmula do projeto.
+    Calcula as dimensões das peças com base na fórmula do projeto, garantindo que os valores sejam numéricos.
     """
+    if not isinstance(altura, (int, float)) or not isinstance(largura, (int, float)):
+        logger.error(f"❌ Valores inválidos para cálculo de peças: altura={altura}, largura={largura}")
+        return []
+
     formula = obter_formula_por_id(id_formula)
-    
     if not formula:
-        return []  # Retorna uma lista vazia se a fórmula não existir
+        logger.warning(f"⚠️ Nenhuma fórmula encontrada para o ID {id_formula}")
+        return []
 
     pecas_calculadas = []
-    
     for peca in formula.get("pecas", []):
-        nome_peca = peca.get("nome_peca", "Peça")
-        quantidade = peca.get("quantidade", 1)
-        dimensoes = peca["calculo"](altura, largura)
-        
-        pecas_calculadas.append({
-            "nome_peca": nome_peca,
-            "quantidade": quantidade,
-            "dimensoes": dimensoes
-        })
-    
-    return pecas_calculadas  # Agora sempre retorna uma lista
-
+        try:
+            nome_peca = peca.get("nome_peca", "Peça")
+            quantidade = peca.get("quantidade", 1)
+            dimensoes = peca["calculo"](altura, largura)
+            pecas_calculadas.append({
+                "nome_peca": nome_peca,
+                "quantidade": quantidade,
+                "dimensoes": dimensoes
+            })
+        except Exception as e:
+            logger.error(f"❌ Erro ao calcular dimensões para peça '{nome_peca}': {e}")
+    return pecas_calculadas
 

@@ -1,10 +1,10 @@
-import time
 import pandas as pd
 from services.client_service import buscar_cliente_por_telefone
 from services.message_service import enviar_mensagem, salvar_mensagem_em_arquivo
 from services.product_service import gerar_menu_inicial, filtrar_projetos_por_escolhas, gerar_menu_por_definicao
-from services.formula_service import calcular_pecas
 from services.state_service import atualizar_ultima_atividade
+from services.materials_service import gerar_menu_materia_prima, gerar_menu_por_definicao_mp, carregar_tabela_mp, gerar_menu_por_definicao_mp
+from services.formula_service import calcular_pecas
 from services.global_state import global_state
 from logger import logger
 
@@ -53,15 +53,21 @@ def gerenciar_mensagem_recebida(contato, texto):
     elif status == "definindo_medida":
         processar_tipo_medida(contato, texto, nome_cliente)
     elif status == "definicao_1":
-        processar_menu_dinamico(contato, texto, nome_cliente, "definicao_1")
+        processar_menu_dinamico_produto(contato, texto, nome_cliente, "definicao_1")
     elif status == "definicao_2":
-        processar_menu_dinamico(contato, texto, nome_cliente, "definicao_2")
+        processar_menu_dinamico_produto(contato, texto, nome_cliente, "definicao_2")
     elif status == "definicao_3":
-        processar_menu_dinamico(contato, texto, nome_cliente, "definicao_3")
+        processar_menu_dinamico_produto(contato, texto, nome_cliente, "definicao_3")
     elif status == "aguardando_altura":
         processar_altura(contato, texto)
     elif status == "aguardando_largura":
         processar_largura(contato, texto)
+    elif status == "cor_materia_prima":
+        processar_menu_dinamico_mp(contato, texto, "cor_materia_prima")
+    elif status == "espessura_materia_prima":
+        processar_menu_dinamico_mp(contato, texto, "espessura_materia_prima")
+    elif status == "beneficiamento":
+        processar_menu_dinamico_mp(contato, texto, "beneficiamento")
     elif status == "aguardando_quantidade":
         processar_quantidade(contato, texto)
     else:
@@ -98,7 +104,7 @@ def processar_tipo_medida(contato, texto, nome_cliente):
         global_state.informacoes_cliente[contato]["medida_final"] = medida_final
 
         tipo_medida = "final" if medida_final == 1 else "de vão"
-        logger.info(f"✅ {contato} escolheu medida {tipo_medida}.")
+        logger.info(f"✅ {nome_cliente} ({contato}) escolheu medida {tipo_medida}.")
         enviar_mensagem(contato, f"Você escolheu informar a medida {tipo_medida}.")
         salvar_mensagem_em_arquivo(contato, nome_cliente, f"Bot: Usuário escolheu medida {tipo_medida}.")
 
@@ -134,7 +140,7 @@ def iniciar_conversa(contato, nome_cliente):
 
 
 
-def processar_menu_dinamico(contato, texto, nome_cliente, estado_atual):
+def processar_menu_dinamico_produto(contato, texto, nome_cliente, estado_atual):
     """
     Processa o menu dinâmico com base no estado atual e na escolha do usuário.
     Trata entradas inválidas e repete o menu se necessário.
@@ -260,9 +266,6 @@ def processar_altura(contato, texto):
 
 
 def processar_largura(contato, texto):
-    """
-    Processa a largura enviada pelo usuário e salva no estado global.
-    """
     try:
         largura = int(texto)
         dados_usuario = global_state.informacoes_cliente.get(contato, {})
@@ -272,43 +275,18 @@ def processar_largura(contato, texto):
             enviar_mensagem(contato, "❌ Erro ao recuperar a altura. Informe novamente.")
             return
 
-        # **Salvando largura corretamente no estado global**
         dados_usuario["largura"] = largura
         global_state.informacoes_cliente[contato] = dados_usuario  # Atualiza o estado
 
         logger.debug(f"📏 Largura salva: {largura}mm para {contato}")
 
-        id_formula = dados_usuario["projeto_escolhido"]["id_formula"]
-        medida_final = dados_usuario.get("medida_final")
-
-        # Se for medida final, pedir quantidade direto
-        if medida_final and id_formula == 1:
-            enviar_mensagem(contato, "Quantas unidades desse projeto você deseja?")
-            global_state.status_usuario[contato] = "aguardando_quantidade"
+        # 📌 **Novo fluxo: Inicia menu de matéria-prima**
+        opcoes_mp = gerar_menu_materia_prima()
+        if opcoes_mp:
+            apresentar_menu_mp(contato, opcoes_mp, "cor_materia_prima")
+        else:
+            enviar_mensagem(contato, "❌ Nenhuma matéria-prima disponível. Tente novamente mais tarde.")
             return
-
-        # Se for medida de vão, calcular as peças
-        pecas = calcular_pecas(id_formula, dados_usuario["altura"], largura)
-
-        pecas_validas = validar_pecas_calculadas(pecas)
-        if not pecas_validas:
-            enviar_mensagem(contato, "❌ Erro ao calcular peças. Tente novamente.")
-            return
-
-        # **Salvando peças calculadas**
-        dados_usuario["pecas"] = pecas_validas
-        global_state.informacoes_cliente[contato] = dados_usuario
-
-        logger.debug(f"📌 Peças calculadas e armazenadas: {pecas_validas}")
-
-        # Exibir ao usuário as peças calculadas
-        msg_pecas = "📏 Dimensões das peças:\n"
-        for peca in pecas_validas:
-            msg_pecas += f"{peca['quantidade']}x {peca['nome_peca']}: {peca['dimensoes'][0]}mm x {peca['dimensoes'][1]}mm\n"
-
-        enviar_mensagem(contato, msg_pecas)
-        
-        global_state.status_usuario[contato] = "aguardando_quantidade"
 
     except ValueError:
         enviar_mensagem(contato, "❌ Largura inválida! Digite um número inteiro.")
@@ -337,6 +315,129 @@ def validar_pecas_calculadas(pecas):
         pecas_validas.append(peca)
 
     return pecas_validas if pecas_validas else None
+
+def apresentar_menu_mp(contato, opcoes, estado):
+    """
+    Envia o menu de matéria-prima ao usuário e atualiza o estado no global_state.
+    """
+    menu = "\n".join([f"{i + 1}. {opcao}" for i, opcao in enumerate(opcoes)])
+    enviar_mensagem(contato, "Escolha uma das opções:")
+    enviar_mensagem(contato, menu)
+
+    # Atualizar o estado do usuário e salvar o menu atual
+    global_state.status_usuario[contato] = estado
+    global_state.ultimo_menu_usuario[contato] = opcoes
+    salvar_mensagem_em_arquivo(contato, "Bot", f"Bot: Apresentou menu para o estado '{estado}'.")
+
+
+def processar_menu_dinamico_mp(contato, texto, estado_atual):
+    """
+    Processa a escolha do usuário no menu dinâmico de matéria-prima.
+    """
+    try:
+        escolha = int(texto) - 1  # Ajustar índice para 0-based
+        opcoes = global_state.ultimo_menu_usuario.get(contato)
+
+        # Verificar se a escolha é válida
+        if not opcoes or escolha < 0 or escolha >= len(opcoes):
+            raise ValueError("Opção inválida.")
+
+        # Registrar a escolha feita pelo usuário
+        escolha_usuario = opcoes[escolha]
+        salvar_mensagem_em_arquivo(contato, "Bot", f"Bot: Usuário escolheu: {escolha_usuario}.")
+        informacoes_cliente = global_state.informacoes_cliente.setdefault(contato, {})
+        informacoes_cliente[estado_atual] = escolha_usuario
+
+        # Carregar a tabela de matéria-prima e aplicar filtros dinamicamente
+        df_mp = carregar_tabela_mp()
+
+        # Mapeamento das colunas reais no DataFrame
+        colunas_reais = {
+            "cor_materia_prima": "cor_materia_prima",
+            "espessura_materia_prima": "espessura_materia_prima",
+            "beneficiamento": "beneficiamento",
+        }
+
+        # Aplicar filtros com base nas escolhas feitas
+        for chave_estado, coluna_real in colunas_reais.items():
+            valor = informacoes_cliente.get(chave_estado)
+            if valor:
+                df_mp = df_mp[df_mp[coluna_real] == valor]
+
+        # Determinar a próxima definição a ser exibida
+        definicoes_ordenadas = ["espessura_materia_prima", "beneficiamento"]
+        proxima_definicao = None
+        for definicao in definicoes_ordenadas:
+            # Verifica se já processou essa definição ou se há opções disponíveis
+            if definicao not in informacoes_cliente:
+                opcoes_proxima_definicao = gerar_menu_por_definicao_mp(df_mp, colunas_reais[definicao])
+                if opcoes_proxima_definicao:  # Gera o próximo menu somente se houver opções válidas
+                    proxima_definicao = definicao
+                    break
+
+        if proxima_definicao:
+            # Gerar e apresentar o menu para a próxima definição
+            apresentar_menu_mp(contato, opcoes_proxima_definicao, proxima_definicao)
+            global_state.status_usuario[contato] = proxima_definicao
+        else:
+            # Se não houver mais definições, finalizar a seleção
+            finalizar_selecao_mp(contato, informacoes_cliente)
+
+    except ValueError:
+        # Repetir o menu caso o valor seja inválido
+        enviar_mensagem(contato, "Opção inválida. Por favor, escolha uma das opções listadas abaixo:")
+        repetir_menu(contato, "Bot")
+
+def finalizar_selecao_mp(contato, informacoes_cliente):
+    """
+    Finaliza a seleção de matéria-prima e continua para a próxima etapa.
+    """
+    materia_prima = informacoes_cliente.get("cor_materia_prima", "Matéria-prima não definida")
+    espessura = informacoes_cliente.get("espessura_materia_prima", "Espessura não definida")
+    beneficiamento = informacoes_cliente.get("beneficiamento", "Beneficiamento não definido")
+    altura = informacoes_cliente.get("altura")
+    largura = informacoes_cliente.get("largura")
+
+    if not altura or not largura:
+        enviar_mensagem(contato, "❌ Erro interno: Altura ou largura não definida. Reinicie o processo.")
+        return
+
+    # Obter a fórmula do projeto escolhido
+    projeto = informacoes_cliente.get("projeto_escolhido", {})
+    id_formula = projeto.get("id_formula")
+
+    if not id_formula:
+        enviar_mensagem(contato, "❌ Erro interno: Fórmula do projeto não encontrada. Reinicie o processo.")
+        return
+
+    # **Usar calcular_pecas do formula_service.py**
+    pecas = calcular_pecas(id_formula, altura, largura)
+
+    if not pecas:
+        enviar_mensagem(contato, "❌ Erro ao calcular as peças. Tente novamente.")
+        return
+
+    # **Salvar as peças calculadas**
+    informacoes_cliente["pecas"] = pecas
+    global_state.informacoes_cliente[contato] = informacoes_cliente
+
+    # Exibir o resumo da seleção
+    enviar_mensagem(
+        contato,
+        f"✅ Matéria-prima escolhida: {materia_prima}, {espessura}, {beneficiamento}."
+    )
+
+    # Exibir as peças calculadas
+    msg_pecas = "📏 Peças calculadas:\n"
+    for peca in pecas:
+        msg_pecas += f"{peca['quantidade']}x {peca['nome_peca']}: {peca['dimensoes'][0]}mm x {peca['dimensoes'][1]}mm\n"
+
+    enviar_mensagem(contato, msg_pecas)
+
+    # Pedir a quantidade ao usuário
+    enviar_mensagem(contato, "Quantas unidades desse projeto você deseja?")
+    global_state.status_usuario[contato] = "aguardando_quantidade"
+
 
 
 def processar_quantidade(contato, texto):

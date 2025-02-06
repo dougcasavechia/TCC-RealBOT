@@ -1,22 +1,27 @@
 import pandas as pd
+import time
 from config import CLIENT_FILE_PATH
 from logger import logger  # Importando nosso logger
 
+CACHE_CLIENTES = None
+CACHE_TIMESTAMP = 0
+CACHE_TIMEOUT = 60  # Atualiza a cada 60 segundos
 
 def carregar_informacoes_dos_clientes():
-    """
-    Carrega os dados dos clientes de um arquivo Excel.
-    """
-    try:
-        df = pd.read_excel(CLIENT_FILE_PATH, dtype={'celular': str})
-        logger.info("Clientes carregados com sucesso.")
-        return df
-    except FileNotFoundError:
-        logger.error(f"Arquivo não encontrado: {CLIENT_FILE_PATH}")
-    except Exception as e:
-        logger.exception(f"Erro ao carregar clientes: {e}")
-    
-    return pd.DataFrame()  # Retorna um DataFrame vazio se houver erro
+    global CACHE_CLIENTES, CACHE_TIMESTAMP
+    if CACHE_CLIENTES is None or (time.time() - CACHE_TIMESTAMP > CACHE_TIMEOUT):
+        try:
+            df = pd.read_excel(CLIENT_FILE_PATH, dtype={'celular': str})
+            CACHE_CLIENTES = df
+            CACHE_TIMESTAMP = time.time()
+            logger.info("Clientes carregados e armazenados em cache.")
+        except FileNotFoundError:
+            logger.error(f"Arquivo não encontrado: {CLIENT_FILE_PATH}")
+            CACHE_CLIENTES = pd.DataFrame()
+        except Exception as e:
+            logger.exception(f"Erro ao carregar clientes: {e}")
+            CACHE_CLIENTES = pd.DataFrame()
+    return CACHE_CLIENTES
 
 
 # Apenas mantenha a função carregada no mesmo arquivo
