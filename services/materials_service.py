@@ -35,7 +35,7 @@ def gerar_menu_materia_prima():
 
 def filtrar_mp_por_escolhas(cor_materia_prima=None, espessura_materia_prima=None, beneficiamento=None):
     """
-    Filtra as matérias-primas com base nas escolhas do usuário.
+    Filtra as matérias-primas com base nas escolhas do usuário de maneira otimizada.
     """
     df = carregar_tabela_mp()
 
@@ -43,18 +43,29 @@ def filtrar_mp_por_escolhas(cor_materia_prima=None, espessura_materia_prima=None
         logger.warning("⚠️ A tabela de matérias-primas está vazia ou não foi carregada.")
         return []
 
-    # Filtrar dinamicamente com base nas escolhas
+    # Criar lista de condições para aplicar filtros dinamicamente
+    filtros = []
     if cor_materia_prima:
-        df = df[df["cor_materia_prima"] == cor_materia_prima]
+        filtros.append(f'cor_materia_prima == "{cor_materia_prima}"')
     if espessura_materia_prima:
-        df = df[df["espessura_materia_prima"] == espessura_materia_prima]
+        filtros.append(f'espessura_materia_prima == "{espessura_materia_prima}"')
     if beneficiamento:
-        df = df[df["beneficiamento"] == beneficiamento]
+        filtros.append(f'beneficiamento == "{beneficiamento}"')
 
-    # Retornar registros filtrados como dicionários
+    # Aplicar todos os filtros de uma vez usando query() se houver filtros
+    if filtros:
+        df = df.query(" and ".join(filtros))
+
+    # Verificar se há resultados antes de converter para dicionário
+    if df.empty:
+        logger.info("⚠️ Nenhum resultado encontrado após filtragem.")
+        return []
+
+    # Converter para dicionário apenas uma vez no final
     materias_primas = df.to_dict("records")
-    logger.info(f"📌 {len(materias_primas)} matérias-primas filtradas para as definições fornecidas.")
+    logger.info(f"📌 {len(materias_primas)} matérias-primas filtradas.")
     return materias_primas
+
 
 
 def gerar_menu_por_definicao_mp(df, definicao_coluna):

@@ -1,4 +1,5 @@
 import pandas as pd
+from logger import logger
 from services.client_service import buscar_cliente_por_telefone
 from services.message_service import enviar_mensagem, salvar_mensagem_em_arquivo
 from services.product_service import gerar_menu_inicial, filtrar_projetos_por_escolhas, gerar_menu_por_definicao
@@ -6,7 +7,6 @@ from services.state_service import atualizar_ultima_atividade
 from services.materials_service import gerar_menu_materia_prima, gerar_menu_por_definicao_mp, carregar_tabela_mp, gerar_menu_por_definicao_mp
 from services.formula_service import calcular_pecas
 from services.global_state import global_state
-from logger import logger
 
 
 def gerenciar_mensagem_recebida(contato, texto):
@@ -58,6 +58,8 @@ def gerenciar_mensagem_recebida(contato, texto):
         processar_menu_dinamico_produto(contato, texto, nome_cliente, "definicao_2")
     elif status == "definicao_3":
         processar_menu_dinamico_produto(contato, texto, nome_cliente, "definicao_3")
+    elif status == "definicao_4":
+        processar_menu_dinamico_produto(contato, texto, nome_cliente, "definicao_4")
     elif status == "aguardando_altura":
         processar_altura(contato, texto)
     elif status == "aguardando_largura":
@@ -139,11 +141,9 @@ def iniciar_conversa(contato, nome_cliente):
         finalizar_conversa(contato, nome_cliente)
 
 
-
 def processar_menu_dinamico_produto(contato, texto, nome_cliente, estado_atual):
     """
     Processa o menu dinâmico com base no estado atual e na escolha do usuário.
-    Trata entradas inválidas e repete o menu se necessário.
     """
     try:
         escolha = int(texto) - 1  # Ajustar índice para 0-based
@@ -162,7 +162,7 @@ def processar_menu_dinamico_produto(contato, texto, nome_cliente, estado_atual):
         informacoes_cliente[estado_atual] = escolha_usuario
 
         # Filtrar os projetos com base nas escolhas atuais
-        chaves_relevantes = ["definicao_1", "definicao_2", "definicao_3", "medida_final"]
+        chaves_relevantes = ["definicao_1", "definicao_2", "definicao_3", "definicao_4", "medida_final"]
         dados_para_filtrar = {k: v for k, v in informacoes_cliente.items() if k in chaves_relevantes}
         projetos = filtrar_projetos_por_escolhas(**dados_para_filtrar)
 
@@ -182,8 +182,8 @@ def processar_menu_dinamico_produto(contato, texto, nome_cliente, estado_atual):
             processar_projeto(contato, nome_cliente, projeto_escolhido)
             return
 
-        # Identificar a próxima definição válida
-        definicoes_ordenadas = ["definicao_2", "definicao_3"]
+        # **🔹 Adicionando `definicao_4` na lista de verificações**
+        definicoes_ordenadas = ["definicao_2", "definicao_3", "definicao_4"]
         proxima_definicao = None
 
         for definicao in definicoes_ordenadas:
@@ -204,6 +204,7 @@ def processar_menu_dinamico_produto(contato, texto, nome_cliente, estado_atual):
     except ValueError:
         enviar_mensagem(contato, "Opção inválida. Por favor, escolha uma das opções listadas abaixo:")
         repetir_menu(contato, nome_cliente)
+
 
 
 def finalizar_selecao(contato, nome_cliente, projetos):

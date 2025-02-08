@@ -1,7 +1,7 @@
 import time
-from services.message_service import enviar_mensagem, salvar_mensagem_em_arquivo
 from config import TIMEOUT_WARNING, TIMEOUT_FINAL
-from services.global_state import global_state  # Agora usamos a instância global
+from services.message_service import enviar_mensagem, salvar_mensagem_em_arquivo
+from services.global_state import global_state
 
 def monitor_inactivity():
     """

@@ -37,9 +37,10 @@ def gerar_menu_inicial(medida_final):
     return opcoes_iniciais
 
 
-def filtrar_projetos_por_escolhas(definicao_1=None, definicao_2=None, definicao_3=None, medida_final=None):
+def filtrar_projetos_por_escolhas(definicao_1=None, definicao_2=None, definicao_3=None, definicao_4=None, medida_final=None):
     """
     Filtra os projetos com base nas escolhas do usuário e no tipo de medida.
+    Agora inclui a definição_4 na filtragem.
     """
     df = carregar_tabela_projetos()
 
@@ -56,6 +57,8 @@ def filtrar_projetos_por_escolhas(definicao_1=None, definicao_2=None, definicao_
         df = df[df["definicao_2"] == definicao_2]
     if definicao_3:
         df = df[df["definicao_3"] == definicao_3]
+    if definicao_4:
+        df = df[df["definicao_4"] == definicao_4]
 
     # Retornar registros filtrados como dicionários
     projetos = df.to_dict("records")

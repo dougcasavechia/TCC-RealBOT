@@ -1,7 +1,8 @@
 import pandas as pd
 import time
 from config import CLIENT_FILE_PATH
-from logger import logger  # Importando nosso logger
+from logger import logger
+
 
 CACHE_CLIENTES = None
 CACHE_TIMESTAMP = 0
@@ -12,6 +13,7 @@ def carregar_informacoes_dos_clientes():
     if CACHE_CLIENTES is None or (time.time() - CACHE_TIMESTAMP > CACHE_TIMEOUT):
         try:
             df = pd.read_excel(CLIENT_FILE_PATH, dtype={'celular': str})
+            df['celular'] = df['celular'].astype(str).str.strip()  # Conversão única
             CACHE_CLIENTES = df
             CACHE_TIMESTAMP = time.time()
             logger.info("Clientes carregados e armazenados em cache.")
@@ -24,23 +26,19 @@ def carregar_informacoes_dos_clientes():
     return CACHE_CLIENTES
 
 
-# Apenas mantenha a função carregada no mesmo arquivo
 def buscar_cliente_por_telefone(contato):
     """
-    Busca um cliente pelo número de telefone no Excel.
+    Busca um cliente pelo número de telefone no cache.
     """
-
     logger.debug(f"🔍 Buscando cliente pelo telefone: {contato}")
 
-    informacoes_dos_clientes = carregar_informacoes_dos_clientes()  # Agora funciona corretamente
+    informacoes_dos_clientes = carregar_informacoes_dos_clientes()
 
     if informacoes_dos_clientes.empty:
         logger.warning("⚠️ Tentativa de busca em um banco de clientes vazio.")
         return None
 
-    informacoes_dos_clientes['celular'] = informacoes_dos_clientes['celular'].astype(str).str.strip()
-    contato = str(contato).strip()  
-
+    contato = str(contato).strip()  # Normaliza a entrada
     cliente = informacoes_dos_clientes.loc[informacoes_dos_clientes['celular'] == contato]
 
     if not cliente.empty:
@@ -49,6 +47,7 @@ def buscar_cliente_por_telefone(contato):
 
     logger.warning(f"❌ Cliente não encontrado: {contato}")
     return None
+
 
 
 

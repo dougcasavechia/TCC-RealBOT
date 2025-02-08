@@ -1,6 +1,6 @@
 import os
-from datetime import datetime
 import requests
+from datetime import datetime
 from config import BASE_URL, CONVERSATIONS_DIR
 from logger import logger  # Usando o módulo de logs
 
