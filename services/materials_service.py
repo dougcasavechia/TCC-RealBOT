@@ -81,3 +81,37 @@ def gerar_menu_por_definicao_mp(df, definicao_coluna):
     logger.info(f"📋 {len(opcoes)} opções geradas para '{definicao_coluna}'.")
     return opcoes
 
+
+def buscar_materia_prima(dados_usuario):
+    """
+    Busca o ID e o valor da matéria-prima com base nas escolhas do usuário.
+    """
+
+    # Carregar tabela de matéria-prima
+    df_mp = carregar_tabela_mp()
+    if df_mp.empty:
+        logger.error("❌ Tabela de matéria-prima está vazia ou não foi encontrada.")
+        return None, None
+
+    # Aplicar filtros com base nas escolhas do usuário
+    filtros = {
+        "cor_materia_prima": dados_usuario.get("cor_materia_prima"),
+        "espessura_materia_prima": dados_usuario.get("espessura_materia_prima"),
+        "beneficiamento": dados_usuario.get("beneficiamento"),
+    }
+    for coluna, valor in filtros.items():
+        if valor:
+            df_mp = df_mp[df_mp[coluna] == valor]
+
+    # Se não sobrar nenhum resultado, retorna erro
+    if df_mp.empty:
+        logger.warning("⚠️ Nenhuma matéria-prima encontrada com os filtros aplicados.")
+        return None, None
+
+    # Selecionar a primeira linha correspondente (ou ajuste conforme necessário)
+    materia_prima = df_mp.iloc[0]
+    id_materia_prima = materia_prima["id_materia_prima"]
+    valor_mp_m2 = materia_prima["valor_materia_prima_m2"]
+
+    return id_materia_prima, valor_mp_m2
+

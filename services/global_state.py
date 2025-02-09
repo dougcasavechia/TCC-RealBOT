@@ -1,27 +1,24 @@
 class GlobalState:
-    """
-    Classe Singleton para armazenar o estado global dos usuários.
-    """
-
-    _instance = None  # Variável privada para armazenar a única instância da classe
+    """Singleton para armazenar o estado global dos usuários."""
+    
+    _instance = None  
 
     def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(GlobalState, cls).__new__(cls)
-            cls._instance.status_usuario = {}           # Armazena o estado atual de cada usuário
-            cls._instance.ultima_interacao_usuario = {} # Timestamp da última interação
-            cls._instance.ultimo_menu_usuario = {}      # Último menu enviado ao usuário
-            cls._instance.informacoes_cliente = {}      # Informações dos clientes cadastrados
+        if not cls._instance:
+            cls._instance = super().__new__(cls)
+            cls._instance._reset_state()
         return cls._instance
 
-    def limpar_dados_usuario(self, contato):
-        """
-        Remove os dados do usuário do estado global.
-        """
-        self.status_usuario.pop(contato, None)
-        self.ultima_interacao_usuario.pop(contato, None)
-        self.ultimo_menu_usuario.pop(contato, None)
-        self.informacoes_cliente.pop(contato, None)
+    def _reset_state(self):
+        """Inicializa os dicionários de estado."""
+        self.status_usuario = {}
+        self.ultima_interacao_usuario = {}
+        self.ultimo_menu_usuario = {}
+        self.informacoes_cliente = {}
 
-# Criar uma instância global para ser usada em toda a aplicação
+    def limpar_dados_usuario(self, contato):
+        """Remove os dados do usuário do estado global."""
+        for attr in ["status_usuario", "ultima_interacao_usuario", "ultimo_menu_usuario", "informacoes_cliente"]:
+            getattr(self, attr).pop(contato, None)
+
 global_state = GlobalState()

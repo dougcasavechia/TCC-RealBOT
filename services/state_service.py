@@ -4,22 +4,20 @@ from services.message_service import enviar_mensagem, salvar_mensagem_em_arquivo
 from services.global_state import global_state
 
 def monitor_inactivity():
-    """
-    Monitora a inatividade dos usuários e envia avisos ou encerra a conversa após um tempo limite.
-    """
+    """Monitora usuários inativos e envia avisos ou encerra conversas."""
     while True:
         horario_atual = time.time()
 
-        for contato in list(global_state.ultima_interacao_usuario.keys()):
-            ultima_interacao = global_state.ultima_interacao_usuario[contato]
+        for contato, ultima_interacao in global_state.ultima_interacao_usuario.items():
             status = global_state.status_usuario.get(contato)
 
-            # Se o usuário estiver inativo e ainda não recebeu um aviso
-            if horario_atual - ultima_interacao > TIMEOUT_WARNING and status and not status.startswith("inativo_"):
-                enviar_aviso_inatividade(contato, status)
+            if not status or status.startswith("inativo_"):
+                continue
 
-            # Se o usuário continuar inativo após o aviso, encerra a conversa
-            elif horario_atual - ultima_interacao > TIMEOUT_WARNING + TIMEOUT_FINAL:
+            tempo_inativo = horario_atual - ultima_interacao
+            if tempo_inativo > TIMEOUT_WARNING:
+                enviar_aviso_inatividade(contato, status)
+            if tempo_inativo > TIMEOUT_WARNING + TIMEOUT_FINAL:
                 encerrar_conversa_por_inatividade(contato)
 
         time.sleep(5)

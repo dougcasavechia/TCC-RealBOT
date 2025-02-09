@@ -3,13 +3,17 @@ import requests
 from datetime import datetime
 from config import BASE_URL, CONVERSATIONS_DIR
 from logger import logger  # Usando o módulo de logs
-
 import time
 
 def enviar_mensagem(contato, mensagem, tentativas=3, intervalo=2):
+    # 🚫 Bloqueia envio caso o contato seja "status"
+    if contato.lower() == "status":
+        logger.warning("🚫 Tentativa de envio de mensagem para 'status' bloqueada.")
+        return False
+
     url = f"{BASE_URL}/whatsapp-session/sendText"
     payload = {"phone": contato, "message": mensagem}
-    
+
     for tentativa in range(tentativas):
         try:
             response = requests.post(url, json=payload)
@@ -20,6 +24,7 @@ def enviar_mensagem(contato, mensagem, tentativas=3, intervalo=2):
             logger.error(f"❌ Erro ao enviar mensagem (tentativa {tentativa+1}/{tentativas}): {e}")
             time.sleep(intervalo)  # Espera antes de tentar novamente
     return False
+
 
 def salvar_mensagem_em_arquivo(contato, nome_cliente, mensagem):
     """

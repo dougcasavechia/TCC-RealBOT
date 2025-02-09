@@ -30,36 +30,33 @@ FORMULAS_PROJETOS = {
 }
 
 def obter_formula_por_id(id_projeto):
-    """
-    Retorna a fórmula associada ao ID do projeto.
-    """
-    return FORMULAS_PROJETOS.get(id_projeto)
+    """Retorna a fórmula associada ao ID do projeto, se existir."""
+    return FORMULAS_PROJETOS.get(id_projeto, None)
 
-def calcular_pecas(id_formula, altura, largura):
-    """
-    Calcula as dimensões das peças com base na fórmula do projeto, garantindo que os valores sejam numéricos.
-    """
+def calcular_pecas(id_formula, altura, largura, quantidade_total=1):
+    """Calcula as dimensões das peças do projeto."""
     if not isinstance(altura, (int, float)) or not isinstance(largura, (int, float)):
-        logger.error(f"❌ Valores inválidos para cálculo de peças: altura={altura}, largura={largura}")
+        logger.error(f"❌ Valores inválidos para cálculo: altura={altura}, largura={largura}")
         return []
 
     formula = obter_formula_por_id(id_formula)
     if not formula:
-        logger.warning(f"⚠️ Nenhuma fórmula encontrada para o ID {id_formula}")
+        logger.warning(f"⚠️ Nenhuma fórmula encontrada para ID {id_formula}")
         return []
 
     pecas_calculadas = []
-    for peca in formula.get("pecas", []):
+    for peca in formula["pecas"]:
         try:
-            nome_peca = peca.get("nome_peca", "Peça")
-            quantidade = peca.get("quantidade", 1)
+            nome_peca = peca["nome_peca"]
+            quantidade = peca["quantidade"] * quantidade_total
             dimensoes = peca["calculo"](altura, largura)
-            pecas_calculadas.append({
-                "nome_peca": nome_peca,
-                "quantidade": quantidade,
-                "dimensoes": dimensoes
-            })
+            
+            if not isinstance(dimensoes, tuple) or len(dimensoes) != 2:
+                raise ValueError("Cálculo retornou formato inválido.")
+
+            pecas_calculadas.append({"nome_peca": nome_peca, "quantidade": quantidade, "dimensoes": dimensoes})
         except Exception as e:
-            logger.error(f"❌ Erro ao calcular dimensões para peça '{nome_peca}': {e}")
+            logger.error(f"❌ Erro ao calcular peça '{nome_peca}': {e}")
+    
     return pecas_calculadas
 

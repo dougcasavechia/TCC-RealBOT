@@ -1,13 +1,16 @@
 import pandas as pd
 from logger import logger
-from services.client_service import buscar_cliente_por_telefone
+# import time
+from services.client_service import ClienteCache
 from services.message_service import enviar_mensagem, salvar_mensagem_em_arquivo
 from services.product_service import gerar_menu_inicial, filtrar_projetos_por_escolhas, gerar_menu_por_definicao
 from services.state_service import atualizar_ultima_atividade
-from services.materials_service import gerar_menu_materia_prima, gerar_menu_por_definicao_mp, carregar_tabela_mp, gerar_menu_por_definicao_mp
+from services.materials_service import gerar_menu_materia_prima, gerar_menu_por_definicao_mp, carregar_tabela_mp, gerar_menu_por_definicao_mp, buscar_materia_prima
 from services.formula_service import calcular_pecas
+from services.pedidos_service import salvar_pedido
 from services.global_state import global_state
 
+df_clientes = ClienteCache.carregar_clientes()
 
 def gerenciar_mensagem_recebida(contato, texto):
     """
@@ -23,15 +26,25 @@ def gerenciar_mensagem_recebida(contato, texto):
 
     if not cliente_info:
         logger.debug(f"🔍 Buscando cliente no banco para o número: {contato}")
-        cliente_info = buscar_cliente_por_telefone(contato)
+        cliente_info = ClienteCache.buscar_cliente_por_telefone(contato)
 
-        if cliente_info and isinstance(cliente_info, dict) and cliente_info.get("nome_cliente"):
-            global_state.informacoes_cliente[contato] = cliente_info
+        if cliente_info:
+            # Usar o `id_cliente` do arquivo cliente.xlsx
+            global_state.informacoes_cliente[contato] = {
+                "id_cliente": cliente_info["id_cliente"],  # ID único e confiável
+                "nome_cliente": cliente_info["nome_cliente"],
+                "telefone": contato  # Telefone para comunicação
+            }
         else:
             enviar_mensagem(contato, "❌ Seu número não está cadastrado. Solicite cadastro com um vendedor.")
             salvar_mensagem_em_arquivo(contato, "Desconhecido", "Bot: Número não cadastrado.")
             global_state.limpar_dados_usuario(contato)
             return
+
+    # ✅ Garantir que as informações do cliente sempre tenham `id_cliente`
+    if "id_cliente" not in cliente_info:
+        cliente_info["id_cliente"] = contato  # Define o contato como fallback para `id_cliente`
+        global_state.informacoes_cliente[contato] = cliente_info
 
     nome_cliente = cliente_info.get("nome_cliente", "Cliente").strip()
 
@@ -72,6 +85,10 @@ def gerenciar_mensagem_recebida(contato, texto):
         processar_menu_dinamico_mp(contato, texto, "beneficiamento")
     elif status == "aguardando_quantidade":
         processar_quantidade(contato, texto)
+    elif status == "aguardando_resposta_adicionar":
+        processar_resposta_adicionar_pecas(contato, texto)
+    elif status == "aguardando_nome_pedido":  
+        processar_resposta_finalizou(contato, texto)
     else:
         repetir_menu(contato, nome_cliente)
 
@@ -440,61 +457,54 @@ def finalizar_selecao_mp(contato, informacoes_cliente):
     global_state.status_usuario[contato] = "aguardando_quantidade"
 
 
-
 def processar_quantidade(contato, texto):
     """
-    Processa a quantidade informada e exibe as dimensões corretas para medida final ou medida de vão.
+    Processa a quantidade informada e ajusta as peças calculadas.
     """
     try:
         quantidade = int(texto)
-        dados_usuario = global_state.informacoes_cliente[contato]
+        dados_usuario = global_state.informacoes_cliente.get(contato, {})
         projeto = dados_usuario["projeto_escolhido"]
         descricao_projeto = projeto.get("descricao_projeto", "Projeto sem descrição.")
         id_formula = projeto.get("id_formula", 0)
-        medida_final = dados_usuario.get("medida_final")  # Se for 1, significa que o usuário escolheu medida final
 
-        logger.debug(f"📊 ID Fórmula: {id_formula}, Medida Final: {medida_final}, Quantidade: {quantidade}")
-        
-        # Se for medida final, usamos os valores informados diretamente
-        if medida_final and id_formula == 1:
-            altura = dados_usuario["altura"]
-            largura = dados_usuario["largura"]
+        if id_formula == 0:
+            enviar_mensagem(contato, "❌ Erro interno: Fórmula não encontrada para este projeto.")
+            return
 
-            msg_final = f"📦 Você solicitou {quantidade} unidades do item {descricao_projeto} de {altura}mm x {largura}mm."
-        
-        else:
-            # Se for medida de vão, aplicamos as fórmulas para calcular as peças
-            pecas = dados_usuario.get("pecas", [])
+        # Recuperar peças calculadas com base na fórmula
+        altura = dados_usuario.get("altura", 0)
+        largura = dados_usuario.get("largura", 0)
+        pecas = calcular_pecas(id_formula, altura, largura)
 
-            logger.debug(f"📌 Conteúdo de 'pecas' antes da multiplicação: {pecas}")
+        if not pecas:
+            enviar_mensagem(contato, "❌ Erro ao calcular as peças. Tente novamente.")
+            return
 
-            if not isinstance(pecas, list) or len(pecas) == 0:
-                logger.error("❌ Erro: 'pecas' está vazio ou não é uma lista válida.")
-                enviar_mensagem(contato, "❌ Erro interno ao calcular as peças. Tente novamente.")
-                return
+        # Ajustar a quantidade de cada peça multiplicando pelo valor informado
+        pecas_multiplicadas = []
+        for peca in pecas:
+            pecas_multiplicadas.append({
+                "nome_peca": peca["nome_peca"],
+                "quantidade": peca["quantidade"] * quantidade,  # Multiplica pela quantidade total
+                "dimensoes": peca["dimensoes"]
+            })
 
-            pecas_multiplicadas = []
+        # Salvar no estado global
+        dados_usuario["pecas"] = pecas_multiplicadas
+        dados_usuario["quantidade_total"] = quantidade  # Salva a quantidade total no estado global
+        global_state.informacoes_cliente[contato] = dados_usuario
 
-            for peca in pecas:
-                if not isinstance(peca, dict):
-                    logger.error(f"❌ Tipo inesperado em 'peca': {type(peca)} - Valor: {peca}")
-                    continue  # Ignora valores inválidos
+        # Exibir resumo das peças calculadas
+        msg_pecas = f"📦 Para {quantidade} unidades do item {descricao_projeto}, você precisará de:\n"
+        for peca in pecas_multiplicadas:
+            msg_pecas += f"\n{peca['quantidade']}x {peca['nome_peca']}: {peca['dimensoes'][0]}mm x {peca['dimensoes'][1]}mm"
 
-                pecas_multiplicadas.append({
-                    "nome_peca": peca.get("nome_peca", "Peça"),
-                    "quantidade": peca.get("quantidade", 1) * quantidade,
-                    "dimensoes": peca.get("dimensoes", (0, 0))
-                })
+        enviar_mensagem(contato, msg_pecas)
+        salvar_mensagem_em_arquivo(contato, descricao_projeto, msg_pecas)
 
-            logger.debug(f"📌 Pecas multiplicadas: {pecas_multiplicadas}")
-
-            msg_final = f"📦 Para {quantidade} unidades do item {descricao_projeto}, você precisará de:\n"
-            for peca in pecas_multiplicadas:
-                msg_final += f"{peca['quantidade']}x {peca['nome_peca']}: {peca['dimensoes'][0]}mm x {peca['dimensoes'][1]}mm\n"
-
-        enviar_mensagem(contato, msg_final)
-        salvar_mensagem_em_arquivo(contato, descricao_projeto, msg_final)
-        finalizar_conversa(contato, "Pedido finalizado.")
+        # Passa para salvar as peças no pedido
+        adicionar_pecas_pedido(contato, dados_usuario.get("nome_cliente", "Cliente"))
 
     except ValueError:
         enviar_mensagem(contato, "❌ Quantidade inválida! Digite um número inteiro.")
@@ -515,6 +525,135 @@ def repetir_menu(contato, nome_cliente):
         enviar_mensagem(contato, "Conversa encerrada por inatividade. Para reiniciar, envie qualquer mensagem.")
         salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Conversa encerrada por inatividade.")
         global_state.limpar_dados_usuario(contato)
+
+
+def adicionar_pecas_pedido(contato, nome_cliente):
+    """
+    Acumula os pedidos no estado global e garante que o id_cliente seja correto.
+    """
+    dados_usuario = global_state.informacoes_cliente.get(contato, {})
+
+    # Buscar o cliente pelo telefone
+    cliente_info = ClienteCache.buscar_cliente_por_telefone(contato)
+    if not cliente_info:
+        logger.error(f"❌ Cliente não encontrado para o número {contato}.")
+        enviar_mensagem(contato, "❌ Erro interno: Cliente não encontrado. Tente novamente.")
+        return
+
+    id_cliente = cliente_info["id_cliente"]
+    nome_cliente = cliente_info["nome_cliente"]
+
+    # Atualizar o estado do cliente com as informações corretas
+    dados_usuario["id_cliente"] = id_cliente
+    dados_usuario["nome_cliente"] = nome_cliente
+
+    # Continuar o processamento normalmente
+    pedidos_acumulados = dados_usuario.get("pedidos", [])
+    id_materia_prima, valor_mp_m2 = buscar_materia_prima(dados_usuario)
+
+    if not id_materia_prima or not valor_mp_m2:
+        enviar_mensagem(contato, "❌ Erro: Não foi possível identificar a matéria-prima. Tente novamente.")
+        return
+
+    pecas_calculadas = dados_usuario.get("pecas", [])
+    novo_pedido = {
+        "id_cliente": id_cliente,
+        "nome_cliente": nome_cliente,  # Nome atualizado
+        "id_projeto": dados_usuario.get("projeto_escolhido", {}).get("id_projeto"),
+        "id_materia_prima": id_materia_prima,
+        "valor_mp_m2": valor_mp_m2,
+        "pecas": pecas_calculadas,
+        "altura_vao": dados_usuario.get("altura"),
+        "largura_vao": dados_usuario.get("largura"),
+    }
+
+    pedidos_acumulados.append(novo_pedido)
+    dados_usuario["pedidos"] = pedidos_acumulados
+    global_state.informacoes_cliente[contato] = dados_usuario
+
+    perguntar_se_finalizou(contato)
+
+
+def processar_resposta_adicionar_pecas(contato, texto):
+    """
+    Processa a resposta do usuário sobre adicionar mais peças ou finalizar o pedido.
+    Agora mantém os pedidos acumulados corretamente.
+    """
+    texto = texto.strip()
+
+    if texto == "1":  # Cliente quer adicionar mais peças
+        enviar_mensagem(contato, "🔄 Redirecionando para adicionar mais peças...")
+
+        # ✅ Manter os pedidos já feitos e limpar apenas as informações do novo projeto
+        dados_usuario = global_state.informacoes_cliente.get(contato, {})
+        pedidos_acumulados = dados_usuario.get("pedidos", [])
+
+        global_state.informacoes_cliente[contato] = {"pedidos": pedidos_acumulados}  # Mantém os pedidos
+        perguntar_tipo_medida(contato, global_state.informacoes_cliente[contato].get("nome_cliente", "Cliente"))
+
+    elif texto == "2":  # Cliente quer finalizar o pedido
+        enviar_mensagem(contato, "✅ Antes de finalizar, qual nome deseja dar para este pedido?")
+        global_state.status_usuario[contato] = "aguardando_nome_pedido"
+
+    else:
+        enviar_mensagem(contato, "❌ Opção inválida. Escolha:\n1️⃣ Adicionar mais peças\n2️⃣ Finalizar pedido.")
+
+
+def perguntar_se_finalizou(contato):
+    """
+    Pergunta ao usuário se deseja continuar adicionando mais peças ou finalizar o pedido.
+    """
+    enviar_mensagem(contato, "Deseja adicionar mais peças ao pedido?")
+    enviar_mensagem(contato, "1️⃣ Sim\n2️⃣ Não, finalizar pedido.")
+
+    # Atualiza o estado do usuário para esperar a resposta
+    global_state.status_usuario[contato] = "aguardando_resposta_adicionar"
+
+def processar_resposta_finalizou(contato, texto):
+    """
+    Finaliza o pedido e salva TODOS os projetos adicionados na tabela.
+    """
+    # Obter o estado do usuário
+    dados_usuario = global_state.informacoes_cliente.get(contato, {})
+    nome_pedido = texto.strip()
+
+    if not nome_pedido:
+        enviar_mensagem(contato, "❌ Nome inválido. Por favor, digite um nome para o pedido.")
+        return
+
+    # Verificar se há pedidos acumulados
+    pedidos_acumulados = dados_usuario.get("pedidos", [])
+    if not pedidos_acumulados:
+        enviar_mensagem(contato, "❌ Nenhum pedido encontrado para salvar. Reinicie o processo.")
+        return
+
+    # Garantir que todos os pedidos usem o mesmo id_cliente
+    id_cliente = dados_usuario.get("id_cliente")  # Sempre pegue do estado global
+    if not id_cliente:
+        logger.error(f"❌ ID do cliente ausente no estado global para {contato}.")
+        enviar_mensagem(contato, "❌ Erro interno: ID do cliente não encontrado.")
+        return
+
+    # Salvar todos os pedidos acumulados na planilha
+    for pedido in pedidos_acumulados:
+        salvar_pedido(
+            id_cliente=id_cliente,
+            nome_cliente=pedido.get("nome_cliente", "Cliente Desconhecido"),
+            id_projeto=pedido.get("id_projeto"),
+            id_materia_prima=pedido.get("id_materia_prima"),
+            altura_vao=pedido.get("altura_vao"),
+            largura_vao=pedido.get("largura_vao"),
+            pecas_calculadas=pedido.get("pecas", []),
+            valor_mp_m2=pedido.get("valor_mp_m2", 0.0),
+            nome_pedido=nome_pedido
+        )
+
+    # Notificar o cliente e registrar no log
+    enviar_mensagem(contato, f"✅ Pedido **{nome_pedido}** finalizado com sucesso! Obrigado pela compra. 😊")
+    salvar_mensagem_em_arquivo(contato, "Bot", f"Pedido {nome_pedido} finalizado pelo usuário.")
+
+    # Limpar os dados do usuário após salvar os pedidos
+    global_state.limpar_dados_usuario(contato)
 
 
 def finalizar_conversa(contato, nome_cliente):
