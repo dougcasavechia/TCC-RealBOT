@@ -6,21 +6,27 @@ from services.global_state import global_state
 def monitor_inactivity():
     """Monitora usuários inativos e envia avisos ou encerra conversas."""
     while True:
-        horario_atual = time.time()
+        try:
+            horario_atual = time.time()
 
-        for contato, ultima_interacao in global_state.ultima_interacao_usuario.items():
-            status = global_state.status_usuario.get(contato)
+            for contato, ultima_interacao in list(global_state.ultima_interacao_usuario.items()):
+                status = global_state.status_usuario.get(contato)
 
-            if not status or status.startswith("inativo_"):
-                continue
+                if not status or status.startswith("inativo_"):
+                    continue  # Ignorar usuários já marcados como inativos
 
-            tempo_inativo = horario_atual - ultima_interacao
-            if tempo_inativo > TIMEOUT_WARNING:
-                enviar_aviso_inatividade(contato, status)
-            if tempo_inativo > TIMEOUT_WARNING + TIMEOUT_FINAL:
-                encerrar_conversa_por_inatividade(contato)
+                tempo_inativo = horario_atual - ultima_interacao
 
-        time.sleep(5)
+                if tempo_inativo > TIMEOUT_WARNING and not status.startswith("aviso_enviado"):
+                    enviar_aviso_inatividade(contato, status)
+                    global_state.status_usuario[contato] = f"aviso_enviado_{status}"
+
+                if tempo_inativo > (TIMEOUT_WARNING + TIMEOUT_FINAL):
+                    encerrar_conversa_por_inatividade(contato)
+
+            time.sleep(5)  # Reduz carga no sistema
+        except Exception as e:
+            print(f"❌ Erro no monitoramento de inatividade: {e}")
 
 def atualizar_ultima_atividade(contato):
     """
@@ -31,39 +37,37 @@ def atualizar_ultima_atividade(contato):
 
 def enviar_aviso_inatividade(contato, status):
     """
-    Envia um aviso de inatividade ao usuário com base no estado atual correto.
+    Envia um aviso de inatividade ao usuário e repete a pergunta correta ou o menu correspondente.
+    Agora evita enviar múltiplos avisos seguidos e padroniza a mensagem.
     """
     nome_cliente = global_state.informacoes_cliente.get(contato, {}).get("nome_cliente", "Desconhecido")
 
-    if status in ["aguardando_altura", "aguardando_largura", "aguardando_quantidade"]:
-        # ✅ Se o usuário estava inserindo medidas, refazemos a pergunta correta
-        if status == "aguardando_altura":
-            enviar_mensagem(contato, "Você está inativo. Seu fluxo será encerrado em XXXX segundos se não interagir com o bot.")
-            enviar_mensagem(contato, "Por favor, informe a altura em milímetros:")
-        elif status == "aguardando_largura":
-            enviar_mensagem(contato, "Você está inativo. Seu fluxo será encerrado em XXXX segundos se não interagir com o bot.")
-            enviar_mensagem(contato, "Por favor, informe a largura em milímetros:")
-        elif status == "aguardando_quantidade":
-            enviar_mensagem(contato, "Você está inativo. Seu fluxo será encerrado em XXXX segundos se não interagir com o bot.")
-            enviar_mensagem(contato, "Quantas unidades desse projeto você deseja?")
-        
+    mensagens = {
+        "aguardando_altura": "Informe a altura em milímetros:",
+        "aguardando_largura": "Informe a largura em milímetros:",
+        "aguardando_quantidade": "Quantas unidades desse projeto você deseja?",
+        "aguardando_nome_pedido": "Qual nome deseja dar para este pedido?",
+        "aguardando_resposta_adicionar": "Deseja adicionar mais peças ao pedido?\n1️⃣ Sim\n2️⃣ Não, finalizar pedido."
+    }
+
+    if status in mensagens:
+        enviar_mensagem(contato, f"⏳ {mensagens[status]} Escolha em XXXX segundos, caso contrário seu fluxo será encerrado.")
         salvar_mensagem_em_arquivo(contato, nome_cliente, f"Bot: Aviso de inatividade para {status}.")
     
     else:
-        # ✅ Se o usuário estava em um menu dinâmico, reenviamos o último menu corretamente
+        # Se o usuário estava em um menu de seleção, repetir o menu corretamente
         ultimo_menu = global_state.ultimo_menu_usuario.get(contato, [])
         if ultimo_menu:
             menu_formatado = "\n".join([f"{i + 1}. {opcao}" for i, opcao in enumerate(ultimo_menu)])
-            enviar_mensagem(contato, "Você está inativo. Seu fluxo será encerrado em XXXX segundos se não interagir com o bot.")
-            enviar_mensagem(contato, "Por favor, escolha uma das opções listadas abaixo:")
+            enviar_mensagem(contato, f"⏳ Escolha uma das opções do menu acima em XXXX segundos, caso contrário seu fluxo será encerrado.")
             enviar_mensagem(contato, menu_formatado)
-            salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Aviso de inatividade com menu enviado.")
+            salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Aviso de inatividade repetindo menu.")
         else:
-            enviar_mensagem(contato, "Você está inativo, mas ainda não há opções disponíveis.")
-            salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Aviso de inatividade sem menu.")
+            enviar_mensagem(contato, "⏳ Você está inativo. Seu fluxo será encerrado se não interagir em breve.")
+            salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Aviso de inatividade enviado, sem menu.")
 
-    # ✅ Marcar o estado como "inativo_<status>" para que possamos retomá-lo corretamente depois
-    if status and not status.startswith("inativo_"):
+    # Marcar o usuário como "inativo_" para evitar múltiplos avisos
+    if not status.startswith("inativo_"):
         global_state.status_usuario[contato] = f"inativo_{status}"
 
 
@@ -72,7 +76,7 @@ def encerrar_conversa_por_inatividade(contato):
     Encerra a conversa do usuário se o tempo limite de inatividade for atingido.
     """
     if global_state.status_usuario.get(contato) != "conversa_encerrada":
-        enviar_mensagem(contato, "Conversa encerrada por inatividade. Para reiniciar, envie qualquer mensagem.")
+        enviar_mensagem(contato, "❌ Conversa encerrada por inatividade. Para reiniciar, envie qualquer mensagem.")
         nome_cliente = global_state.informacoes_cliente.get(contato, {}).get("nome_cliente", "Desconhecido")
         salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Conversa encerrada por inatividade.")
 

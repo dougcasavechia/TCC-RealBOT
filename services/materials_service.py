@@ -11,107 +11,84 @@ def carregar_tabela_mp():
     except FileNotFoundError:
         logger.error(f"❌ Arquivo de matérias-primas não encontrado: {MATERIAL_FILE_PATH}")
     except Exception as e:
-        logger.exception(f"❌ Erro ao carregar tabela de matérias-primas: {e}")
+        logger.exception(f"❌ Erro ao carregar tabela de matérias-primas: {e}", exc_info=True)
     
-    return pd.DataFrame()  # Retorna DataFrame vazio se houver erro
-
+    return None  # Retorna None se houver erro
 
 def gerar_menu_materia_prima():
-    """
-    Gera o menu inicial com base na coluna 'cor_materia_prima' da tabela de matérias-primas.
-    """
+    """Gera o menu inicial com base na coluna 'cor_materia_prima' da tabela de matérias-primas."""
     df = carregar_tabela_mp()
-
-    if df.empty:
+    if df is None or df.empty:
         logger.warning("⚠️ A tabela de matérias-primas está vazia ou não foi carregada.")
         return []
 
-    # Obter opções únicas de 'cor_materia_prima'
     opcoes_iniciais = df["cor_materia_prima"].dropna().unique().tolist()
     logger.info(f"📋 {len(opcoes_iniciais)} opções carregadas para o menu de matéria-prima.")
     
     return opcoes_iniciais
 
-
 def filtrar_mp_por_escolhas(cor_materia_prima=None, espessura_materia_prima=None, beneficiamento=None):
-    """
-    Filtra as matérias-primas com base nas escolhas do usuário de maneira otimizada.
-    """
+    """Filtra as matérias-primas com base nas escolhas do usuário."""
     df = carregar_tabela_mp()
-
-    if df.empty:
+    if df is None or df.empty:
         logger.warning("⚠️ A tabela de matérias-primas está vazia ou não foi carregada.")
         return []
 
-    # Criar lista de condições para aplicar filtros dinamicamente
     filtros = []
     if cor_materia_prima:
         filtros.append(f'cor_materia_prima == "{cor_materia_prima}"')
     if espessura_materia_prima:
         filtros.append(f'espessura_materia_prima == "{espessura_materia_prima}"')
-    if beneficiamento:
+
+    # 🔹 Só aplica o filtro de beneficiamento SE a matéria-prima for fixa
+    if beneficiamento and cor_materia_prima.lower() == "fixo":
         filtros.append(f'beneficiamento == "{beneficiamento}"')
 
-    # Aplicar todos os filtros de uma vez usando query() se houver filtros
     if filtros:
-        df = df.query(" and ".join(filtros))
+        try:
+            df = df.query(" and ".join(filtros))
+        except Exception as e:
+            logger.error(f"❌ Erro ao aplicar filtros: {e}", exc_info=True)
+            return []
 
-    # Verificar se há resultados antes de converter para dicionário
     if df.empty:
         logger.info("⚠️ Nenhum resultado encontrado após filtragem.")
         return []
 
-    # Converter para dicionário apenas uma vez no final
     materias_primas = df.to_dict("records")
     logger.info(f"📌 {len(materias_primas)} matérias-primas filtradas.")
     return materias_primas
 
 
-
-def gerar_menu_por_definicao_mp(df, definicao_coluna):
-    """
-    Gera o menu baseado em uma coluna específica da tabela de matérias-primas.
-    """
-    if definicao_coluna not in df.columns or df[definicao_coluna].dropna().empty:
-        logger.warning(f"⚠️ A coluna '{definicao_coluna}' está vazia ou não existe na tabela.")
-        return []
-
-    # Obter valores únicos, ignorando nulos
-    opcoes = df[definicao_coluna].dropna().unique().tolist()
-    logger.info(f"📋 {len(opcoes)} opções geradas para '{definicao_coluna}'.")
-    return opcoes
-
-
 def buscar_materia_prima(dados_usuario):
-    """
-    Busca o ID e o valor da matéria-prima com base nas escolhas do usuário.
-    """
-
-    # Carregar tabela de matéria-prima
+    """Busca o ID e o valor da matéria-prima com base nas escolhas do usuário."""
     df_mp = carregar_tabela_mp()
-    if df_mp.empty:
+    if df_mp is None or df_mp.empty:
         logger.error("❌ Tabela de matéria-prima está vazia ou não foi encontrada.")
         return None, None
 
-    # Aplicar filtros com base nas escolhas do usuário
     filtros = {
         "cor_materia_prima": dados_usuario.get("cor_materia_prima"),
         "espessura_materia_prima": dados_usuario.get("espessura_materia_prima"),
         "beneficiamento": dados_usuario.get("beneficiamento"),
     }
+
     for coluna, valor in filtros.items():
-        if valor:
+        if valor and coluna in df_mp.columns:
             df_mp = df_mp[df_mp[coluna] == valor]
 
-    # Se não sobrar nenhum resultado, retorna erro
     if df_mp.empty:
         logger.warning("⚠️ Nenhuma matéria-prima encontrada com os filtros aplicados.")
         return None, None
 
-    # Selecionar a primeira linha correspondente (ou ajuste conforme necessário)
+    # Garante que colunas essenciais existam
+    colunas_essenciais = ["id_materia_prima", "valor_materia_prima_m2"]
+    if not all(col in df_mp.columns for col in colunas_essenciais):
+        logger.error(f"❌ Colunas essenciais ausentes na tabela de matéria-prima: {colunas_essenciais}")
+        return None, None
+
     materia_prima = df_mp.iloc[0]
     id_materia_prima = materia_prima["id_materia_prima"]
     valor_mp_m2 = materia_prima["valor_materia_prima_m2"]
 
     return id_materia_prima, valor_mp_m2
-

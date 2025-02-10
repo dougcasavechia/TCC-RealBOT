@@ -1,11 +1,10 @@
 import pandas as pd
 from logger import logger
-# import time
 from services.client_service import ClienteCache
 from services.message_service import enviar_mensagem, salvar_mensagem_em_arquivo
 from services.product_service import gerar_menu_inicial, filtrar_projetos_por_escolhas, gerar_menu_por_definicao
 from services.state_service import atualizar_ultima_atividade
-from services.materials_service import gerar_menu_materia_prima, gerar_menu_por_definicao_mp, carregar_tabela_mp, gerar_menu_por_definicao_mp, buscar_materia_prima
+from services.materials_service import gerar_menu_materia_prima, buscar_materia_prima, filtrar_mp_por_escolhas, carregar_tabela_mp
 from services.formula_service import calcular_pecas
 from services.pedidos_service import salvar_pedido
 from services.global_state import global_state
@@ -21,46 +20,16 @@ def gerenciar_mensagem_recebida(contato, texto):
     # ✅ Atualiza o tempo de atividade do usuário
     atualizar_ultima_atividade(contato)
 
-    # Buscar informações do cliente no estado global
-    cliente_info = global_state.informacoes_cliente.get(contato)
-
-    if not cliente_info:
-        logger.debug(f"🔍 Buscando cliente no banco para o número: {contato}")
-        cliente_info = ClienteCache.buscar_cliente_por_telefone(contato)
-
-        if cliente_info:
-            # Usar o `id_cliente` do arquivo cliente.xlsx
-            global_state.informacoes_cliente[contato] = {
-                "id_cliente": cliente_info["id_cliente"],  # ID único e confiável
-                "nome_cliente": cliente_info["nome_cliente"],
-                "telefone": contato  # Telefone para comunicação
-            }
-        else:
-            enviar_mensagem(contato, "❌ Seu número não está cadastrado. Solicite cadastro com um vendedor.")
-            salvar_mensagem_em_arquivo(contato, "Desconhecido", "Bot: Número não cadastrado.")
-            global_state.limpar_dados_usuario(contato)
-            return
-
-    # ✅ Garantir que as informações do cliente sempre tenham `id_cliente`
-    if "id_cliente" not in cliente_info:
-        cliente_info["id_cliente"] = contato  # Define o contato como fallback para `id_cliente`
-        global_state.informacoes_cliente[contato] = cliente_info
-
-    nome_cliente = cliente_info.get("nome_cliente", "Cliente").strip()
-
-    # ✅ Inicializa o estado do usuário, caso ele não tenha um
-    if contato not in global_state.status_usuario:
-        global_state.status_usuario[contato] = "inicial"
-
-    status = global_state.status_usuario.get(contato, "inicial")
-
     # ✅ Restaurar estado caso o usuário estivesse inativo
-    if status.startswith("inativo_"):
-        logger.info(f"⏳ Retomando estado anterior para {contato}.")
-        status = status.replace("inativo_", "")  # Remove o prefixo "inativo_"
-        global_state.status_usuario[contato] = status
+    status = global_state.status_usuario.get(contato, "inicial")
+    if status.startswith("inativo_") or status.startswith("aviso_enviado_"):
+        logger.info(f"⏳ Retomando estado anterior para {contato}. Estado original: {status}")
+        status = status.replace("inativo_", "").replace("aviso_enviado_", "")  # Remove ambos os prefixos
+        global_state.status_usuario[contato] = status  # ✅ Corrigido para atualizar corretamente
 
-    # ✅ Delegar para o fluxo correto com TODOS os estados
+    nome_cliente = global_state.informacoes_cliente.get(contato, {}).get("nome_cliente", "Cliente").strip()
+
+    # ✅ Fluxo baseado no status atualizado
     if status == "inicial":
         perguntar_tipo_medida(contato, nome_cliente)
     elif status == "definindo_medida":
@@ -204,16 +173,17 @@ def processar_menu_dinamico_produto(contato, texto, nome_cliente, estado_atual):
         proxima_definicao = None
 
         for definicao in definicoes_ordenadas:
-            if definicao not in informacoes_cliente and gerar_menu_por_definicao(pd.DataFrame(projetos), definicao):
-                proxima_definicao = definicao
-                break
+            if definicao not in informacoes_cliente:
+                # Passar o DataFrame e os filtros corretamente
+                opcoes_proxima_definicao = gerar_menu_por_definicao(pd.DataFrame(projetos), definicao, dados_para_filtrar)
+                if opcoes_proxima_definicao:
+                    proxima_definicao = definicao
+                    break
 
         if proxima_definicao:
             # Gera o próximo menu
-            opcoes_proxima_definicao = gerar_menu_por_definicao(pd.DataFrame(projetos), proxima_definicao)
-            if opcoes_proxima_definicao:
-                apresentar_menu(contato, nome_cliente, opcoes_proxima_definicao, proxima_definicao)
-                return
+            apresentar_menu(contato, nome_cliente, opcoes_proxima_definicao, proxima_definicao)
+            return
 
         # Se não há mais definições a perguntar, encerrar a conversa
         finalizar_selecao(contato, nome_cliente, projetos)
@@ -223,21 +193,30 @@ def processar_menu_dinamico_produto(contato, texto, nome_cliente, estado_atual):
         repetir_menu(contato, nome_cliente)
 
 
-
 def finalizar_selecao(contato, nome_cliente, projetos):
     """
     Finaliza a seleção e informa ao usuário o projeto escolhido.
+    Se houver mais de um projeto ainda disponível, apresentar um menu final para seleção.
     """
-    if projetos:
-        projeto_escolhido = projetos[0]  # Considera o primeiro projeto como escolhido
-        descricao = projeto_escolhido.get("descricao_projeto", "Projeto não descrito.")
-        enviar_mensagem(contato, f"✅ Projeto selecionado: {descricao}.")
-        salvar_mensagem_em_arquivo(contato, nome_cliente, f"Bot: Projeto finalizado: {descricao}.")
-    else:
+    if not projetos:
         enviar_mensagem(contato, "❌ Não foi possível encontrar um projeto válido. Tente novamente.")
         salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Finalização sem projeto válido.")
+        finalizar_conversa(contato, nome_cliente)
+        return
 
-    finalizar_conversa(contato, nome_cliente)
+    if len(projetos) == 1:
+        # ✅ Apenas um projeto disponível → Selecionar automaticamente
+        projeto_escolhido = projetos[0]
+        descricao = projeto_escolhido.get("descricao_projeto", "Projeto não descrito.")
+
+        enviar_mensagem(contato, f"✅ Projeto selecionado automaticamente: {descricao}.")
+        salvar_mensagem_em_arquivo(contato, nome_cliente, f"Bot: Projeto finalizado automaticamente: {descricao}.")
+
+        processar_projeto(contato, nome_cliente, projeto_escolhido)
+    else:
+        # ✅ Mais de um projeto disponível → Perguntar ao usuário qual deseja
+        opcoes_projetos = [p["descricao_projeto"] for p in projetos]
+        apresentar_menu(contato, nome_cliente, opcoes_projetos, "escolha_final_projeto")
 
 
 def apresentar_menu(contato, nome_cliente, opcoes, estado):
@@ -351,60 +330,80 @@ def apresentar_menu_mp(contato, opcoes, estado):
 def processar_menu_dinamico_mp(contato, texto, estado_atual):
     """
     Processa a escolha do usuário no menu dinâmico de matéria-prima.
+    - Garante que a espessura seja definida antes de seguir.
+    - Se o projeto for "fixo", pergunta o beneficiamento.
+    - Se o projeto for qualquer outro, o beneficiamento é automaticamente "TEMPERADO".
     """
     try:
         escolha = int(texto) - 1  # Ajustar índice para 0-based
         opcoes = global_state.ultimo_menu_usuario.get(contato)
 
-        # Verificar se a escolha é válida
         if not opcoes or escolha < 0 or escolha >= len(opcoes):
             raise ValueError("Opção inválida.")
 
-        # Registrar a escolha feita pelo usuário
+        # Captura a escolha do usuário
         escolha_usuario = opcoes[escolha]
         salvar_mensagem_em_arquivo(contato, "Bot", f"Bot: Usuário escolheu: {escolha_usuario}.")
         informacoes_cliente = global_state.informacoes_cliente.setdefault(contato, {})
         informacoes_cliente[estado_atual] = escolha_usuario
 
-        # Carregar a tabela de matéria-prima e aplicar filtros dinamicamente
-        df_mp = carregar_tabela_mp()
-
-        # Mapeamento das colunas reais no DataFrame
-        colunas_reais = {
-            "cor_materia_prima": "cor_materia_prima",
-            "espessura_materia_prima": "espessura_materia_prima",
-            "beneficiamento": "beneficiamento",
-        }
-
-        # Aplicar filtros com base nas escolhas feitas
-        for chave_estado, coluna_real in colunas_reais.items():
-            valor = informacoes_cliente.get(chave_estado)
-            if valor:
-                df_mp = df_mp[df_mp[coluna_real] == valor]
-
-        # Determinar a próxima definição a ser exibida
-        definicoes_ordenadas = ["espessura_materia_prima", "beneficiamento"]
-        proxima_definicao = None
-        for definicao in definicoes_ordenadas:
-            # Verifica se já processou essa definição ou se há opções disponíveis
-            if definicao not in informacoes_cliente:
-                opcoes_proxima_definicao = gerar_menu_por_definicao_mp(df_mp, colunas_reais[definicao])
-                if opcoes_proxima_definicao:  # Gera o próximo menu somente se houver opções válidas
-                    proxima_definicao = definicao
-                    break
-
-        if proxima_definicao:
-            # Gerar e apresentar o menu para a próxima definição
-            apresentar_menu_mp(contato, opcoes_proxima_definicao, proxima_definicao)
-            global_state.status_usuario[contato] = proxima_definicao
-        else:
-            # Se não houver mais definições, finalizar a seleção
+        # ✅ Se a escolha foi o beneficiamento, FINALIZA a seleção e segue o fluxo
+        if estado_atual == "beneficiamento":
+            informacoes_cliente["beneficiamento"] = escolha_usuario
+            logger.info(f"✅ Beneficiamento escolhido: {escolha_usuario}")
             finalizar_selecao_mp(contato, informacoes_cliente)
+            return
+
+        # ✅ Garantir que a espessura foi escolhida antes de prosseguir
+        cor_mp = informacoes_cliente.get("cor_materia_prima")
+        espessura_mp = informacoes_cliente.get("espessura_materia_prima")
+
+        if not espessura_mp:
+            df_mp = carregar_tabela_mp()
+            opcoes_espessura = df_mp[df_mp["cor_materia_prima"] == cor_mp]["espessura_materia_prima"].dropna().unique().tolist()
+
+            if opcoes_espessura:
+                apresentar_menu_mp(contato, opcoes_espessura, "espessura_materia_prima")
+                global_state.status_usuario[contato] = "espessura_materia_prima"
+                return
+
+        # 🔹 Verifica se o projeto é "fixo" para perguntar beneficiamento
+        projeto = informacoes_cliente.get("projeto_escolhido", {})
+        nome_projeto = projeto.get("descricao_projeto", "").strip().lower()
+
+        logger.debug(f"🔎 Nome do projeto registrado: {nome_projeto}")
+
+        if "fixo" in nome_projeto:
+            # Se for "fixo", perguntar beneficiamento
+            df_mp = carregar_tabela_mp()
+            beneficiamentos_disponiveis = (
+                df_mp[
+                    (df_mp["cor_materia_prima"] == cor_mp) &
+                    (df_mp["espessura_materia_prima"] == espessura_mp)
+                ]["beneficiamento"]
+                .dropna()
+                .unique()
+                .tolist()
+            )
+
+            logger.debug(f"📋 Beneficiamentos disponíveis: {beneficiamentos_disponiveis}")
+
+            if beneficiamentos_disponiveis:
+                apresentar_menu_mp(contato, beneficiamentos_disponiveis, "beneficiamento")
+                global_state.status_usuario[contato] = "beneficiamento"
+                return
+
+        # 🚀 Se NÃO for fixo, define beneficiamento automaticamente como "TEMPERADO"
+        informacoes_cliente["beneficiamento"] = "TEMPERADO"
+        logger.info(f"⚙️ Beneficiamento definido automaticamente como TEMPERADO para {contato}")
+
+        # Finaliza a seleção de matéria-prima e segue o fluxo
+        finalizar_selecao_mp(contato, informacoes_cliente)
 
     except ValueError:
-        # Repetir o menu caso o valor seja inválido
         enviar_mensagem(contato, "Opção inválida. Por favor, escolha uma das opções listadas abaixo:")
         repetir_menu(contato, "Bot")
+
 
 def finalizar_selecao_mp(contato, informacoes_cliente):
     """
@@ -615,7 +614,7 @@ def processar_resposta_finalizou(contato, texto):
     """
     # Obter o estado do usuário
     dados_usuario = global_state.informacoes_cliente.get(contato, {})
-    nome_pedido = texto.strip()
+    nome_pedido = str(texto.strip())
 
     if not nome_pedido:
         enviar_mensagem(contato, "❌ Nome inválido. Por favor, digite um nome para o pedido.")

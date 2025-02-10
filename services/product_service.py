@@ -5,17 +5,21 @@ from logger import logger  # Importando o módulo de logs
 def carregar_tabela_projetos():
     """
     Carrega a tabela de projetos do arquivo Excel.
+    Retorna um DataFrame vazio caso haja erro.
     """
     try:
         df = pd.read_excel(PROJECT_FILE_PATH)
-        logger.info("📊 Tabela de projetos carregada com sucesso.")
+        if df.empty:
+            logger.warning(f"⚠️ O arquivo de projetos está vazio: {PROJECT_FILE_PATH}")
+        else:
+            logger.info("📊 Tabela de projetos carregada com sucesso.")
         return df
     except FileNotFoundError:
         logger.error(f"❌ Arquivo de projetos não encontrado: {PROJECT_FILE_PATH}")
     except Exception as e:
         logger.exception(f"❌ Erro ao carregar tabela de projetos: {e}")
     
-    return pd.DataFrame()
+    return pd.DataFrame()  # Retorna um DataFrame vazio em caso de erro
 
 def gerar_menu_inicial(medida_final):
     """
@@ -23,14 +27,16 @@ def gerar_menu_inicial(medida_final):
     """
     df = carregar_tabela_projetos()
 
-    if df.empty:
-        logger.warning("⚠️ A tabela de projetos está vazia ou não foi carregada.")
+    if df.empty or "definicao_1" not in df.columns:
+        logger.warning("⚠️ A tabela de projetos está vazia ou não contém a coluna 'definicao_1'.")
         return []
 
-    # Filtrar os produtos com base na medida_final
     produtos_filtrados = df[df["medida_final"] == medida_final]
 
-    # Obter opções únicas de definicao_1
+    if produtos_filtrados.empty:
+        logger.info("⚠️ Nenhum produto encontrado para a medida selecionada.")
+        return []
+
     opcoes_iniciais = produtos_filtrados["definicao_1"].dropna().unique().tolist()
     logger.info(f"📋 {len(opcoes_iniciais)} opções carregadas para o menu inicial (Medida Final: {medida_final}).")
     
@@ -66,17 +72,46 @@ def filtrar_projetos_por_escolhas(definicao_1=None, definicao_2=None, definicao_
     return projetos
 
 
-def gerar_menu_por_definicao(df, definicao_coluna):
+def gerar_menu_por_definicao(df, coluna, filtros):
     """
-    Gera o menu baseado em uma coluna específica da tabela filtrada.
-    Ignora definições completamente vazias.
+    Gera um menu com as opções únicas de uma determinada coluna (definição) do DataFrame de projetos,
+    garantindo que apenas as opções dentro do escopo já filtrado sejam consideradas.
     """
-    if definicao_coluna not in df.columns or df[definicao_coluna].dropna().empty:
-        logger.warning(f"⚠️ A coluna '{definicao_coluna}' está vazia ou não existe na tabela.")
+    if coluna not in df.columns:
+        logger.warning(f"⚠️ A coluna '{coluna}' não existe no DataFrame. Retornando lista vazia.")
         return []
 
-    # Obter opções únicas, ignorando valores nulos
-    opcoes = df[definicao_coluna].dropna().unique().tolist()
-    logger.info(f"📋 {len(opcoes)} opções geradas para '{definicao_coluna}'.")
+    # ✅ Aplicar os filtros anteriores antes de buscar as opções
+    for chave, valor in filtros.items():
+        if valor is not None and chave in df.columns:
+            df = df[df[chave] == valor]
+            logger.info(f"🔎 Aplicado filtro '{chave}': {valor}. Linhas restantes: {df.shape[0]}")
+
+    if df.empty:
+        logger.warning(f"⚠️ Nenhum dado disponível após filtragem para '{coluna}'.")
+        return []
+
+    # ✅ Retornar apenas opções compatíveis com os filtros aplicados
+    opcoes = df[coluna].dropna().unique().tolist()
+    logger.info(f"✅ Opções disponíveis para '{coluna}': {opcoes}")
+
     return opcoes
 
+
+def gerar_menu_por_definicao_mp(df, coluna):
+    """
+    Gera um menu com as opções únicas de uma determinada coluna (definição) do DataFrame de matéria-prima.
+    Retorna uma lista com as opções disponíveis.
+    """
+    if coluna not in df.columns:
+        logger.warning(f"⚠️ A coluna '{coluna}' não existe no DataFrame. Retornando lista vazia.")
+        return []
+
+    # Obter opções únicas da definição, removendo valores nulos e duplicados
+    opcoes = df[coluna].dropna().unique().tolist()
+
+    if not opcoes:
+        logger.info(f"⚠️ Nenhuma opção válida encontrada para '{coluna}'.")
+        return []
+
+    return opcoes
