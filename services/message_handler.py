@@ -330,70 +330,75 @@ def apresentar_menu_mp(contato, opcoes, estado):
 def processar_menu_dinamico_mp(contato, texto, estado_atual):
     """
     Processa a escolha do usuário no menu dinâmico de matéria-prima.
-    - Garante que a espessura seja definida antes de seguir.
-    - Se o projeto for "fixo", pergunta o beneficiamento.
-    - Se o projeto for qualquer outro, o beneficiamento é automaticamente "TEMPERADO".
+    - Se for "Peça Padrão", define automaticamente espessura 08 mm e beneficiamento TEMPERADO.
+    - Se for "Fixo", "Janela" ou qualquer outro projeto que precise de espessura, primeiro pergunta a espessura.
+    - Se não for "Padrão" nem "Fixo", define beneficiamento TEMPERADO e avança.
     """
     try:
-        escolha = int(texto) - 1  # Ajustar índice para 0-based
+        escolha = int(texto) - 1  
         opcoes = global_state.ultimo_menu_usuario.get(contato)
 
         if not opcoes or escolha < 0 or escolha >= len(opcoes):
             raise ValueError("Opção inválida.")
 
-        # Captura a escolha do usuário
         escolha_usuario = opcoes[escolha]
         salvar_mensagem_em_arquivo(contato, "Bot", f"Bot: Usuário escolheu: {escolha_usuario}.")
         informacoes_cliente = global_state.informacoes_cliente.setdefault(contato, {})
         informacoes_cliente[estado_atual] = escolha_usuario
 
-        # ✅ Se a escolha foi o beneficiamento, FINALIZA a seleção e segue o fluxo
-        if estado_atual == "beneficiamento":
-            informacoes_cliente["beneficiamento"] = escolha_usuario
-            logger.info(f"✅ Beneficiamento escolhido: {escolha_usuario}")
+        cor_mp = informacoes_cliente.get("cor_materia_prima")
+
+        # 🔹 Verifica o tipo do projeto escolhido
+        projeto = informacoes_cliente.get("projeto_escolhido", {})
+        definicao_1 = projeto.get("definicao_1", "").strip().lower()
+
+        # ✅ Se for "Peça Padrão", definir automaticamente espessura e beneficiamento
+        if "padrão" in definicao_1:
+            informacoes_cliente["espessura_materia_prima"] = "08 mm"
+            informacoes_cliente["beneficiamento"] = "TEMPERADO"
+            logger.info(f"⚙️ Peça Padrão detectada. Espessura: {informacoes_cliente['espessura_materia_prima']}, Beneficiamento: {informacoes_cliente['beneficiamento']}.")
+
             finalizar_selecao_mp(contato, informacoes_cliente)
             return
 
-        # ✅ Garantir que a espessura foi escolhida antes de prosseguir
-        cor_mp = informacoes_cliente.get("cor_materia_prima")
-        espessura_mp = informacoes_cliente.get("espessura_materia_prima")
+        # ✅ Para "Fixo", "Janela" ou outros projetos, primeiro perguntar a espessura
+        df_mp = carregar_tabela_mp()
+        df_mp["espessura_materia_prima"] = df_mp["espessura_materia_prima"].str.strip()
 
-        if not espessura_mp:
-            df_mp = carregar_tabela_mp()
-            opcoes_espessura = df_mp[df_mp["cor_materia_prima"] == cor_mp]["espessura_materia_prima"].dropna().unique().tolist()
+        opcoes_espessura = (
+            df_mp[df_mp["cor_materia_prima"].str.strip() == cor_mp]["espessura_materia_prima"]
+            .dropna()
+            .unique()
+            .tolist()
+        )
 
-            if opcoes_espessura:
-                apresentar_menu_mp(contato, opcoes_espessura, "espessura_materia_prima")
-                global_state.status_usuario[contato] = "espessura_materia_prima"
-                return
+        logger.debug(f"📏 Opções de espessura para {cor_mp}: {opcoes_espessura}")
 
-        # 🔹 Verifica se o projeto é "fixo" para perguntar beneficiamento
-        projeto = informacoes_cliente.get("projeto_escolhido", {})
-        nome_projeto = projeto.get("descricao_projeto", "").strip().lower()
+        if estado_atual == "cor_materia_prima" and opcoes_espessura:
+            apresentar_menu_mp(contato, opcoes_espessura, "espessura_materia_prima")
+            global_state.status_usuario[contato] = "espessura_materia_prima"
+            return
 
-        logger.debug(f"🔎 Nome do projeto registrado: {nome_projeto}")
-
-        if "fixo" in nome_projeto:
-            # Se for "fixo", perguntar beneficiamento
-            df_mp = carregar_tabela_mp()
+        # ✅ Se a espessura já foi escolhida e for "Fixo", perguntar beneficiamento
+        if "fixo" in definicao_1:
             beneficiamentos_disponiveis = (
                 df_mp[
-                    (df_mp["cor_materia_prima"] == cor_mp) &
-                    (df_mp["espessura_materia_prima"] == espessura_mp)
+                    (df_mp["cor_materia_prima"].str.strip() == cor_mp) &
+                    (df_mp["espessura_materia_prima"].str.strip() == informacoes_cliente.get("espessura_materia_prima", ""))
                 ]["beneficiamento"]
                 .dropna()
                 .unique()
                 .tolist()
             )
 
-            logger.debug(f"📋 Beneficiamentos disponíveis: {beneficiamentos_disponiveis}")
+            logger.debug(f"📋 Beneficiamentos disponíveis para fixo: {beneficiamentos_disponiveis}")
 
-            if beneficiamentos_disponiveis:
+            if estado_atual == "espessura_materia_prima" and beneficiamentos_disponiveis:
                 apresentar_menu_mp(contato, beneficiamentos_disponiveis, "beneficiamento")
                 global_state.status_usuario[contato] = "beneficiamento"
                 return
 
-        # 🚀 Se NÃO for fixo, define beneficiamento automaticamente como "TEMPERADO"
+        # ✅ Para qualquer outro projeto, definir beneficiamento TEMPERADO e avançar
         informacoes_cliente["beneficiamento"] = "TEMPERADO"
         logger.info(f"⚙️ Beneficiamento definido automaticamente como TEMPERADO para {contato}")
 

@@ -37,10 +37,16 @@ def filtrar_mp_por_escolhas(cor_materia_prima=None, espessura_materia_prima=None
     filtros = []
     if cor_materia_prima:
         filtros.append(f'cor_materia_prima == "{cor_materia_prima}"')
+
+    # ✅ Se for "Peça Padrão", definir automaticamente espessura como 8mm
     if espessura_materia_prima:
         filtros.append(f'espessura_materia_prima == "{espessura_materia_prima}"')
+    elif cor_materia_prima and "peca_padrao" in cor_materia_prima.lower():
+        espessura_materia_prima = "08 mm"
+        filtros.append(f'espessura_materia_prima == "08 mm"')
+        logger.info(f"⚙️ Peça padrão detectada. Espessura definida automaticamente como 8mm.")
 
-    # 🔹 Só aplica o filtro de beneficiamento SE a matéria-prima for fixa
+    # ✅ Se for fixo, aplicar filtro de beneficiamento
     if beneficiamento and cor_materia_prima.lower() == "fixo":
         filtros.append(f'beneficiamento == "{beneficiamento}"')
 
