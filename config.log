@@ -6271,3 +6271,299 @@ AttributeError: 'numpy.int64' object has no attribute 'lower'
 2025-02-10 00:26:01,203 - INFO - 🗑️ Dados do usuário 5515997754551 foram removidos do estado global.
 2025-02-10 00:26:01,204 - INFO - ✅ Mensagem processada com sucesso para 5515997754551.
 2025-02-10 00:26:01,204 - INFO - 127.0.0.1 - - [10/Feb/2025 00:26:01] "POST /webhook HTTP/1.1" 200 -
+2025-02-10 00:37:41,728 - INFO - 📄 Clientes carregados e armazenados em cache.
+2025-02-10 00:37:41,730 - INFO - 🚀 Bot iniciado. Aguardando mensagens...
+2025-02-10 00:37:41,743 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2025-02-10 00:37:41,744 - INFO - [33mPress CTRL+C to quit[0m
+2025-02-10 00:37:48,271 - INFO - 📩 Webhook ativado - Contato: 5515997754551, Mensagem: 1
+2025-02-10 00:37:48,271 - INFO - 📩 Mensagem recebida - contato: 5515997754551, texto: 1
+2025-02-10 00:37:48,272 - INFO - 🟢 Perguntando tipo de medida para 5515997754551.
+2025-02-10 00:37:48,500 - INFO - ✅ Mensagem enviada para 5515997754551: Qual o tipo de medida que deseja informar?
+2025-02-10 00:37:48,819 - INFO - ✅ Mensagem enviada para 5515997754551: 1. Medida final
+2. Medida de vão
+2025-02-10 00:37:48,821 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:37:48,821 - INFO - ✅ Mensagem processada com sucesso para 5515997754551.
+2025-02-10 00:37:48,822 - INFO - 127.0.0.1 - - [10/Feb/2025 00:37:48] "POST /webhook HTTP/1.1" 200 -
+2025-02-10 00:37:50,020 - INFO - 📩 Webhook ativado - Contato: 5515997754551, Mensagem: 2
+2025-02-10 00:37:50,020 - INFO - 📩 Mensagem recebida - contato: 5515997754551, texto: 2
+2025-02-10 00:37:50,021 - INFO - ✅ Cliente (5515997754551) escolheu medida de vão.
+2025-02-10 00:37:50,241 - INFO - ✅ Mensagem enviada para 5515997754551: Você escolheu informar a medida de vão.
+2025-02-10 00:37:50,245 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:37:50,246 - INFO - 🟢 Iniciando conversa com 5515997754551.
+2025-02-10 00:37:50,636 - INFO - ✅ Mensagem enviada para 5515997754551: Vamos começar escolhendo o tipo de produto.
+2025-02-10 00:37:50,648 - INFO - 📊 Tabela de projetos carregada com sucesso.
+2025-02-10 00:37:50,650 - INFO - 📋 3 opções carregadas para o menu inicial (Medida Final: 0).
+2025-02-10 00:37:50,839 - INFO - ✅ Mensagem enviada para 5515997754551: Escolha uma das opções:
+2025-02-10 00:37:51,057 - INFO - ✅ Mensagem enviada para 5515997754551: 1. FIXO
+2. JANELA
+3. PORTA
+2025-02-10 00:37:51,061 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:37:51,061 - INFO - ✅ Mensagem processada com sucesso para 5515997754551.
+2025-02-10 00:37:51,062 - INFO - 127.0.0.1 - - [10/Feb/2025 00:37:51] "POST /webhook HTTP/1.1" 200 -
+2025-02-10 00:37:53,562 - INFO - 📩 Webhook ativado - Contato: 5515997754551, Mensagem: 2
+2025-02-10 00:37:53,562 - INFO - 📩 Mensagem recebida - contato: 5515997754551, texto: 2
+2025-02-10 00:37:53,565 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:37:53,595 - INFO - 📊 Tabela de projetos carregada com sucesso.
+2025-02-10 00:37:53,599 - INFO - 📌 6 projetos filtrados para as definições fornecidas.
+2025-02-10 00:37:53,600 - INFO - 🔎 Aplicado filtro 'medida_final': 0. Linhas restantes: 6
+2025-02-10 00:37:53,603 - INFO - 🔎 Aplicado filtro 'definicao_1': JANELA. Linhas restantes: 6
+2025-02-10 00:37:53,643 - INFO - ✅ Opções disponíveis para 'definicao_2': ['DE CORRER']
+2025-02-10 00:37:53,996 - INFO - ✅ Mensagem enviada para 5515997754551: Escolha uma das opções:
+2025-02-10 00:37:54,201 - INFO - ✅ Mensagem enviada para 5515997754551: 1. DE CORRER
+2025-02-10 00:37:54,202 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:37:54,203 - INFO - ✅ Mensagem processada com sucesso para 5515997754551.
+2025-02-10 00:37:54,203 - INFO - 127.0.0.1 - - [10/Feb/2025 00:37:54] "POST /webhook HTTP/1.1" 200 -
+2025-02-10 00:37:55,437 - INFO - 📩 Webhook ativado - Contato: 5515997754551, Mensagem: 1
+2025-02-10 00:37:55,438 - INFO - 📩 Mensagem recebida - contato: 5515997754551, texto: 1
+2025-02-10 00:37:55,440 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:37:55,468 - INFO - 📊 Tabela de projetos carregada com sucesso.
+2025-02-10 00:37:55,470 - INFO - 📌 6 projetos filtrados para as definições fornecidas.
+2025-02-10 00:37:55,509 - INFO - 🔎 Aplicado filtro 'medida_final': 0. Linhas restantes: 6
+2025-02-10 00:37:55,514 - INFO - 🔎 Aplicado filtro 'definicao_1': JANELA. Linhas restantes: 6
+2025-02-10 00:37:55,515 - INFO - 🔎 Aplicado filtro 'definicao_2': DE CORRER. Linhas restantes: 6
+2025-02-10 00:37:55,517 - INFO - ✅ Opções disponíveis para 'definicao_3': ['COM 2 FOLHAS', 'COM 4 FOLHAS']
+2025-02-10 00:37:55,856 - INFO - ✅ Mensagem enviada para 5515997754551: Escolha uma das opções:
+2025-02-10 00:37:56,041 - INFO - ✅ Mensagem enviada para 5515997754551: 1. COM 2 FOLHAS
+2. COM 4 FOLHAS
+2025-02-10 00:37:56,043 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:37:56,043 - INFO - ✅ Mensagem processada com sucesso para 5515997754551.
+2025-02-10 00:37:56,043 - INFO - 127.0.0.1 - - [10/Feb/2025 00:37:56] "POST /webhook HTTP/1.1" 200 -
+2025-02-10 00:37:57,166 - INFO - 📩 Webhook ativado - Contato: 5515997754551, Mensagem: 1
+2025-02-10 00:37:57,167 - INFO - 📩 Mensagem recebida - contato: 5515997754551, texto: 1
+2025-02-10 00:37:57,169 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:37:57,193 - INFO - 📊 Tabela de projetos carregada com sucesso.
+2025-02-10 00:37:57,197 - INFO - 📌 3 projetos filtrados para as definições fornecidas.
+2025-02-10 00:37:57,198 - INFO - 🔎 Aplicado filtro 'medida_final': 0. Linhas restantes: 3
+2025-02-10 00:37:57,199 - INFO - 🔎 Aplicado filtro 'definicao_1': JANELA. Linhas restantes: 3
+2025-02-10 00:37:57,200 - INFO - 🔎 Aplicado filtro 'definicao_2': DE CORRER. Linhas restantes: 3
+2025-02-10 00:37:57,200 - INFO - 🔎 Aplicado filtro 'definicao_3': COM 2 FOLHAS. Linhas restantes: 3
+2025-02-10 00:37:57,201 - INFO - ✅ Opções disponíveis para 'definicao_4': ['BATE/FECHA 1531 COM TRINCO 1335', 'TRINCO 1335', 'FECHADURA 3530']
+2025-02-10 00:37:57,541 - INFO - ✅ Mensagem enviada para 5515997754551: Escolha uma das opções:
+2025-02-10 00:37:57,742 - INFO - ✅ Mensagem enviada para 5515997754551: 1. BATE/FECHA 1531 COM TRINCO 1335
+2. TRINCO 1335
+3. FECHADURA 3530
+2025-02-10 00:37:57,744 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:37:57,744 - INFO - ✅ Mensagem processada com sucesso para 5515997754551.
+2025-02-10 00:37:57,745 - INFO - 127.0.0.1 - - [10/Feb/2025 00:37:57] "POST /webhook HTTP/1.1" 200 -
+2025-02-10 00:38:00,285 - INFO - 📩 Webhook ativado - Contato: 5515997754551, Mensagem: 1
+2025-02-10 00:38:00,285 - INFO - 📩 Mensagem recebida - contato: 5515997754551, texto: 1
+2025-02-10 00:38:00,286 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:38:00,311 - INFO - 📊 Tabela de projetos carregada com sucesso.
+2025-02-10 00:38:00,314 - INFO - 📌 1 projetos filtrados para as definições fornecidas.
+2025-02-10 00:38:00,680 - INFO - ✅ Mensagem enviada para 5515997754551: ✅ Projeto selecionado: JANELA DE CORRER - 2 FOLHAS - COM BATE/FECHA 1531 E TRINCO 1335 [VÃO].
+2025-02-10 00:38:00,681 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:38:00,878 - INFO - ✅ Mensagem enviada para 5515997754551: Informe a altura do vão ou da peça em milímetros:
+2025-02-10 00:38:00,879 - INFO - ✅ Mensagem processada com sucesso para 5515997754551.
+2025-02-10 00:38:00,879 - INFO - 127.0.0.1 - - [10/Feb/2025 00:38:00] "POST /webhook HTTP/1.1" 200 -
+2025-02-10 00:38:03,118 - INFO - 📩 Webhook ativado - Contato: 5515997754551, Mensagem: 1000
+2025-02-10 00:38:03,119 - INFO - 📩 Mensagem recebida - contato: 5515997754551, texto: 1000
+2025-02-10 00:38:03,348 - INFO - ✅ Mensagem enviada para 5515997754551: Agora informe a largura em milímetros:
+2025-02-10 00:38:03,349 - INFO - ✅ Mensagem processada com sucesso para 5515997754551.
+2025-02-10 00:38:03,349 - INFO - 127.0.0.1 - - [10/Feb/2025 00:38:03] "POST /webhook HTTP/1.1" 200 -
+2025-02-10 00:38:05,033 - INFO - 📩 Webhook ativado - Contato: 5515997754551, Mensagem: 1000
+2025-02-10 00:38:05,034 - INFO - 📩 Mensagem recebida - contato: 5515997754551, texto: 1000
+2025-02-10 00:38:05,045 - INFO - 📊 Tabela de matérias-primas carregada com sucesso.
+2025-02-10 00:38:05,045 - INFO - 📋 3 opções carregadas para o menu de matéria-prima.
+2025-02-10 00:38:05,398 - INFO - ✅ Mensagem enviada para 5515997754551: Escolha uma das opções:
+2025-02-10 00:38:05,634 - INFO - ✅ Mensagem enviada para 5515997754551: 1. INCOLOR
+2. FUMÊ
+3. VERDE
+2025-02-10 00:38:05,636 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:38:05,636 - INFO - ✅ Mensagem processada com sucesso para 5515997754551.
+2025-02-10 00:38:05,637 - INFO - 127.0.0.1 - - [10/Feb/2025 00:38:05] "POST /webhook HTTP/1.1" 200 -
+2025-02-10 00:38:06,695 - INFO - 📩 Webhook ativado - Contato: 5515997754551, Mensagem: 2
+2025-02-10 00:38:06,695 - INFO - 📩 Mensagem recebida - contato: 5515997754551, texto: 2
+2025-02-10 00:38:06,696 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:38:06,707 - INFO - 📊 Tabela de matérias-primas carregada com sucesso.
+2025-02-10 00:38:06,914 - INFO - ✅ Mensagem enviada para 5515997754551: Escolha uma das opções:
+2025-02-10 00:38:07,241 - INFO - ✅ Mensagem enviada para 5515997754551: 1. 06 mm
+2. 08 mm
+3. 10 mm
+2025-02-10 00:38:07,243 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:38:07,243 - INFO - ✅ Mensagem processada com sucesso para 5515997754551.
+2025-02-10 00:38:07,244 - INFO - 127.0.0.1 - - [10/Feb/2025 00:38:07] "POST /webhook HTTP/1.1" 200 -
+2025-02-10 00:38:08,519 - INFO - 📩 Webhook ativado - Contato: 5515997754551, Mensagem: 2
+2025-02-10 00:38:08,520 - INFO - 📩 Mensagem recebida - contato: 5515997754551, texto: 2
+2025-02-10 00:38:08,521 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:38:08,521 - INFO - ⚙️ Beneficiamento definido automaticamente como TEMPERADO para 5515997754551
+2025-02-10 00:38:08,731 - INFO - ✅ Mensagem enviada para 5515997754551: ✅ Matéria-prima escolhida: FUMÊ, 08 mm, TEMPERADO.
+2025-02-10 00:38:09,140 - INFO - ✅ Mensagem enviada para 5515997754551: 📏 Peças calculadas:
+1x Peça Fixa: 975mm x 500mm
+1x Peça Móvel: 938mm x 550mm
+
+2025-02-10 00:38:09,340 - INFO - ✅ Mensagem enviada para 5515997754551: Quantas unidades desse projeto você deseja?
+2025-02-10 00:38:09,340 - INFO - ✅ Mensagem processada com sucesso para 5515997754551.
+2025-02-10 00:38:09,341 - INFO - 127.0.0.1 - - [10/Feb/2025 00:38:09] "POST /webhook HTTP/1.1" 200 -
+2025-02-10 00:38:11,136 - INFO - 📩 Webhook ativado - Contato: 5515997754551, Mensagem: 1
+2025-02-10 00:38:11,136 - INFO - 📩 Mensagem recebida - contato: 5515997754551, texto: 1
+2025-02-10 00:38:11,348 - INFO - ✅ Mensagem enviada para 5515997754551: 📦 Para 1 unidades do item JANELA DE CORRER - 2 FOLHAS - COM BATE/FECHA 1531 E TRINCO 1335 [VÃO], você precisará de:
+
+1x Peça Fixa: 975mm x 500mm
+1x Peça Móvel: 938mm x 550mm
+2025-02-10 00:38:11,350 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:38:11,351 - INFO - ✅ Cliente encontrado: 5515997754551
+2025-02-10 00:38:11,364 - INFO - 📊 Tabela de matérias-primas carregada com sucesso.
+2025-02-10 00:38:11,701 - INFO - ✅ Mensagem enviada para 5515997754551: Deseja adicionar mais peças ao pedido?
+2025-02-10 00:38:11,920 - INFO - ✅ Mensagem enviada para 5515997754551: 1️⃣ Sim
+2️⃣ Não, finalizar pedido.
+2025-02-10 00:38:11,922 - INFO - ✅ Mensagem processada com sucesso para 5515997754551.
+2025-02-10 00:38:11,924 - INFO - 127.0.0.1 - - [10/Feb/2025 00:38:11] "POST /webhook HTTP/1.1" 200 -
+2025-02-10 00:38:13,243 - INFO - 📩 Webhook ativado - Contato: 5515997754551, Mensagem: 1
+2025-02-10 00:38:13,243 - INFO - 📩 Mensagem recebida - contato: 5515997754551, texto: 1
+2025-02-10 00:38:13,463 - INFO - ✅ Mensagem enviada para 5515997754551: 🔄 Redirecionando para adicionar mais peças...
+2025-02-10 00:38:13,463 - INFO - 🟢 Perguntando tipo de medida para 5515997754551.
+2025-02-10 00:38:13,819 - INFO - ✅ Mensagem enviada para 5515997754551: Qual o tipo de medida que deseja informar?
+2025-02-10 00:38:14,064 - INFO - ✅ Mensagem enviada para 5515997754551: 1. Medida final
+2. Medida de vão
+2025-02-10 00:38:14,066 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:38:14,067 - INFO - ✅ Mensagem processada com sucesso para 5515997754551.
+2025-02-10 00:38:14,067 - INFO - 127.0.0.1 - - [10/Feb/2025 00:38:14] "POST /webhook HTTP/1.1" 200 -
+2025-02-10 00:38:14,990 - INFO - 📩 Webhook ativado - Contato: 5515997754551, Mensagem: 1
+2025-02-10 00:38:14,990 - INFO - 📩 Mensagem recebida - contato: 5515997754551, texto: 1
+2025-02-10 00:38:14,991 - INFO - ✅ Cliente (5515997754551) escolheu medida final.
+2025-02-10 00:38:15,212 - INFO - ✅ Mensagem enviada para 5515997754551: Você escolheu informar a medida final.
+2025-02-10 00:38:15,214 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:38:15,214 - INFO - 🟢 Iniciando conversa com 5515997754551.
+2025-02-10 00:38:15,563 - INFO - ✅ Mensagem enviada para 5515997754551: Vamos começar escolhendo o tipo de produto.
+2025-02-10 00:38:15,599 - INFO - 📊 Tabela de projetos carregada com sucesso.
+2025-02-10 00:38:15,601 - INFO - 📋 5 opções carregadas para o menu inicial (Medida Final: 1).
+2025-02-10 00:38:15,787 - INFO - ✅ Mensagem enviada para 5515997754551: Escolha uma das opções:
+2025-02-10 00:38:15,972 - INFO - ✅ Mensagem enviada para 5515997754551: 1. FIXO
+2. JANELA
+3. PORTA
+4. BOX PADRÃO
+5. JANELA PADRÃO
+2025-02-10 00:38:15,974 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:38:15,975 - INFO - ✅ Mensagem processada com sucesso para 5515997754551.
+2025-02-10 00:38:15,975 - INFO - 127.0.0.1 - - [10/Feb/2025 00:38:15] "POST /webhook HTTP/1.1" 200 -
+2025-02-10 00:38:19,193 - INFO - 📩 Webhook ativado - Contato: 5515997754551, Mensagem: 4
+2025-02-10 00:38:19,193 - INFO - 📩 Mensagem recebida - contato: 5515997754551, texto: 4
+2025-02-10 00:38:19,196 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:38:19,216 - INFO - 📊 Tabela de projetos carregada com sucesso.
+2025-02-10 00:38:19,219 - INFO - 📌 28 projetos filtrados para as definições fornecidas.
+2025-02-10 00:38:19,221 - INFO - 🔎 Aplicado filtro 'medida_final': 1. Linhas restantes: 28
+2025-02-10 00:38:19,222 - INFO - 🔎 Aplicado filtro 'definicao_1': BOX PADRÃO. Linhas restantes: 28
+2025-02-10 00:38:19,223 - INFO - ✅ Opções disponíveis para 'definicao_2': ['FIXO', 'MÓVEL']
+2025-02-10 00:38:19,579 - INFO - ✅ Mensagem enviada para 5515997754551: Escolha uma das opções:
+2025-02-10 00:38:19,799 - INFO - ✅ Mensagem enviada para 5515997754551: 1. FIXO
+2. MÓVEL
+2025-02-10 00:38:19,802 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:38:19,802 - INFO - ✅ Mensagem processada com sucesso para 5515997754551.
+2025-02-10 00:38:19,803 - INFO - 127.0.0.1 - - [10/Feb/2025 00:38:19] "POST /webhook HTTP/1.1" 200 -
+2025-02-10 00:38:22,600 - INFO - 📩 Webhook ativado - Contato: 5515997754551, Mensagem: 1
+2025-02-10 00:38:22,600 - INFO - 📩 Mensagem recebida - contato: 5515997754551, texto: 1
+2025-02-10 00:38:22,602 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:38:22,616 - INFO - 📊 Tabela de projetos carregada com sucesso.
+2025-02-10 00:38:22,619 - INFO - 📌 14 projetos filtrados para as definições fornecidas.
+2025-02-10 00:38:22,621 - INFO - 🔎 Aplicado filtro 'medida_final': 1. Linhas restantes: 14
+2025-02-10 00:38:22,622 - INFO - 🔎 Aplicado filtro 'definicao_1': BOX PADRÃO. Linhas restantes: 14
+2025-02-10 00:38:22,623 - INFO - 🔎 Aplicado filtro 'definicao_2': FIXO. Linhas restantes: 14
+2025-02-10 00:38:22,624 - INFO - ✅ Opções disponíveis para 'definicao_3': ['350 MM', '400 MM', '450 MM', '500 MM', '550 MM', '600 MM', '650 MM', '700 MM', '750 MM', '800 MM', '850 MM', '900 MM', '950 MM', '1000 MM']
+2025-02-10 00:38:22,975 - INFO - ✅ Mensagem enviada para 5515997754551: Escolha uma das opções:
+2025-02-10 00:38:23,174 - INFO - ✅ Mensagem enviada para 5515997754551: 1. 350 MM
+2. 400 MM
+3. 450 MM
+4. 500 MM
+5. 550 MM
+6. 600 MM
+7. 650 MM
+8. 700 MM
+9. 750 MM
+10. 800 MM
+11. 850 MM
+12. 900 MM
+13. 950 MM
+14. 1000 MM
+2025-02-10 00:38:23,181 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:38:23,182 - INFO - ✅ Mensagem processada com sucesso para 5515997754551.
+2025-02-10 00:38:23,183 - INFO - 127.0.0.1 - - [10/Feb/2025 00:38:23] "POST /webhook HTTP/1.1" 200 -
+2025-02-10 00:38:26,872 - INFO - 📩 Webhook ativado - Contato: 5515997754551, Mensagem: 6
+2025-02-10 00:38:26,873 - INFO - 📩 Mensagem recebida - contato: 5515997754551, texto: 6
+2025-02-10 00:38:26,875 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:38:26,894 - INFO - 📊 Tabela de projetos carregada com sucesso.
+2025-02-10 00:38:26,897 - INFO - 📌 1 projetos filtrados para as definições fornecidas.
+2025-02-10 00:38:27,247 - INFO - ✅ Mensagem enviada para 5515997754551: ✅ Projeto selecionado: BOX PADRÃO - FIXO - 600MM.
+2025-02-10 00:38:27,249 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:38:27,460 - INFO - ✅ Mensagem enviada para 5515997754551: Informe a altura do vão ou da peça em milímetros:
+2025-02-10 00:38:27,461 - INFO - ✅ Mensagem processada com sucesso para 5515997754551.
+2025-02-10 00:38:27,462 - INFO - 127.0.0.1 - - [10/Feb/2025 00:38:27] "POST /webhook HTTP/1.1" 200 -
+2025-02-10 00:38:36,979 - INFO - ✅ Mensagem enviada para 5515997754551: ⏳ Informe a altura em milímetros: Escolha em XXXX segundos, caso contrário seu fluxo será encerrado.
+2025-02-10 00:38:36,982 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:38:37,402 - INFO - 📩 Webhook ativado - Contato: 5515997754551, Mensagem: 600
+2025-02-10 00:38:37,403 - INFO - 📩 Mensagem recebida - contato: 5515997754551, texto: 600
+2025-02-10 00:38:37,404 - INFO - ⏳ Retomando estado anterior para 5515997754551. Estado original: aviso_enviado_aguardando_altura
+2025-02-10 00:38:37,661 - INFO - ✅ Mensagem enviada para 5515997754551: Agora informe a largura em milímetros:
+2025-02-10 00:38:37,662 - INFO - ✅ Mensagem processada com sucesso para 5515997754551.
+2025-02-10 00:38:37,662 - INFO - 127.0.0.1 - - [10/Feb/2025 00:38:37] "POST /webhook HTTP/1.1" 200 -
+2025-02-10 00:38:40,046 - INFO - 📩 Webhook ativado - Contato: 5515997754551, Mensagem: 600
+2025-02-10 00:38:40,046 - INFO - 📩 Mensagem recebida - contato: 5515997754551, texto: 600
+2025-02-10 00:38:40,056 - INFO - 📊 Tabela de matérias-primas carregada com sucesso.
+2025-02-10 00:38:40,057 - INFO - 📋 3 opções carregadas para o menu de matéria-prima.
+2025-02-10 00:38:40,442 - INFO - ✅ Mensagem enviada para 5515997754551: Escolha uma das opções:
+2025-02-10 00:38:40,630 - INFO - ✅ Mensagem enviada para 5515997754551: 1. INCOLOR
+2. FUMÊ
+3. VERDE
+2025-02-10 00:38:40,632 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:38:40,632 - INFO - ✅ Mensagem processada com sucesso para 5515997754551.
+2025-02-10 00:38:40,633 - INFO - 127.0.0.1 - - [10/Feb/2025 00:38:40] "POST /webhook HTTP/1.1" 200 -
+2025-02-10 00:38:47,222 - INFO - ✅ Mensagem enviada para 5515997754551: ⏳ Escolha uma das opções do menu acima em XXXX segundos, caso contrário seu fluxo será encerrado.
+2025-02-10 00:38:47,414 - INFO - ✅ Mensagem enviada para 5515997754551: 1. INCOLOR
+2. FUMÊ
+3. VERDE
+2025-02-10 00:38:47,416 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:38:49,338 - INFO - 📩 Webhook ativado - Contato: 5515997754551, Mensagem: 1
+2025-02-10 00:38:49,338 - INFO - 📩 Mensagem recebida - contato: 5515997754551, texto: 1
+2025-02-10 00:38:49,339 - INFO - ⏳ Retomando estado anterior para 5515997754551. Estado original: aviso_enviado_cor_materia_prima
+2025-02-10 00:38:49,341 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:38:49,353 - INFO - 📊 Tabela de matérias-primas carregada com sucesso.
+2025-02-10 00:38:49,598 - INFO - ✅ Mensagem enviada para 5515997754551: Escolha uma das opções:
+2025-02-10 00:38:49,926 - INFO - ✅ Mensagem enviada para 5515997754551: 1. 06 mm
+2. 08 mm
+3. 10 mm
+2025-02-10 00:38:49,927 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:38:49,928 - INFO - ✅ Mensagem processada com sucesso para 5515997754551.
+2025-02-10 00:38:49,928 - INFO - 127.0.0.1 - - [10/Feb/2025 00:38:49] "POST /webhook HTTP/1.1" 200 -
+2025-02-10 00:38:52,484 - INFO - 📩 Webhook ativado - Contato: 5515997754551, Mensagem: 2
+2025-02-10 00:38:52,485 - INFO - 📩 Mensagem recebida - contato: 5515997754551, texto: 2
+2025-02-10 00:38:52,486 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:38:52,495 - INFO - 📊 Tabela de matérias-primas carregada com sucesso.
+2025-02-10 00:38:52,713 - INFO - ✅ Mensagem enviada para 5515997754551: Escolha uma das opções:
+2025-02-10 00:38:53,076 - INFO - ✅ Mensagem enviada para 5515997754551: 1. TEMPERADO
+2. LAPIDADO
+3. CORTADO
+2025-02-10 00:38:53,079 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:38:53,080 - INFO - ✅ Mensagem processada com sucesso para 5515997754551.
+2025-02-10 00:38:53,082 - INFO - 127.0.0.1 - - [10/Feb/2025 00:38:53] "POST /webhook HTTP/1.1" 200 -
+2025-02-10 00:38:54,777 - INFO - 📩 Webhook ativado - Contato: 5515997754551, Mensagem: 1
+2025-02-10 00:38:54,778 - INFO - 📩 Mensagem recebida - contato: 5515997754551, texto: 1
+2025-02-10 00:38:54,779 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:38:54,779 - INFO - ✅ Beneficiamento escolhido: TEMPERADO
+2025-02-10 00:38:55,040 - INFO - ✅ Mensagem enviada para 5515997754551: ✅ Matéria-prima escolhida: INCOLOR, 08 mm, TEMPERADO.
+2025-02-10 00:38:55,402 - INFO - ✅ Mensagem enviada para 5515997754551: 📏 Peças calculadas:
+1x Peça Principal: 600mm x 600mm
+
+2025-02-10 00:38:55,598 - INFO - ✅ Mensagem enviada para 5515997754551: Quantas unidades desse projeto você deseja?
+2025-02-10 00:38:55,599 - INFO - ✅ Mensagem processada com sucesso para 5515997754551.
+2025-02-10 00:38:55,600 - INFO - 127.0.0.1 - - [10/Feb/2025 00:38:55] "POST /webhook HTTP/1.1" 200 -
+2025-02-10 00:39:01,254 - INFO - 📩 Webhook ativado - Contato: 5515997754551, Mensagem: 1
+2025-02-10 00:39:01,255 - INFO - 📩 Mensagem recebida - contato: 5515997754551, texto: 1
+2025-02-10 00:39:01,526 - INFO - ✅ Mensagem enviada para 5515997754551: 📦 Para 1 unidades do item BOX PADRÃO - FIXO - 600MM, você precisará de:
+
+1x Peça Principal: 600mm x 600mm
+2025-02-10 00:39:01,527 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:39:01,534 - INFO - 📄 Clientes carregados e armazenados em cache.
+2025-02-10 00:39:01,535 - INFO - ✅ Cliente encontrado: 5515997754551
+2025-02-10 00:39:01,546 - INFO - 📊 Tabela de matérias-primas carregada com sucesso.
+2025-02-10 00:39:01,899 - INFO - ✅ Mensagem enviada para 5515997754551: Deseja adicionar mais peças ao pedido?
+2025-02-10 00:39:02,091 - INFO - ✅ Mensagem enviada para 5515997754551: 1️⃣ Sim
+2️⃣ Não, finalizar pedido.
+2025-02-10 00:39:02,093 - INFO - ✅ Mensagem processada com sucesso para 5515997754551.
+2025-02-10 00:39:02,094 - INFO - 127.0.0.1 - - [10/Feb/2025 00:39:02] "POST /webhook HTTP/1.1" 200 -
+2025-02-10 00:39:07,618 - INFO - ✅ Mensagem enviada para 5515997754551: ⏳ Deseja adicionar mais peças ao pedido?
+1️⃣ Sim
+2️⃣ Não, finalizar pedido. Escolha em XXXX segundos, caso contrário seu fluxo será encerrado.
+2025-02-10 00:39:07,621 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:39:17,843 - INFO - ✅ Mensagem enviada para 5515997754551: ❌ Conversa encerrada por inatividade. Para reiniciar, envie qualquer mensagem.
+2025-02-10 00:39:17,845 - INFO - 💾 Mensagem registrada para 5515997754551
+2025-02-10 00:39:17,846 - INFO - 🗑️ Dados do usuário 5515997754551 foram removidos do estado global.
