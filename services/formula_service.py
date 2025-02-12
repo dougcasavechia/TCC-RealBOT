@@ -39,10 +39,15 @@ def obter_formula_por_id(id_projeto):
 
 def calcular_pecas(id_formula, altura, largura, quantidade_total=1):
     """Calcula as dimensões das peças do projeto, garantindo valores válidos."""
-    if not isinstance(altura, (int, float)) or not isinstance(largura, (int, float)):
-        logger.error(f"❌ Valores inválidos para cálculo: altura={altura}, largura={largura}")
+    if not isinstance(largura, (int, float)) or largura <= 0:
+        logger.error(f"❌ Largura inválida para cálculo: {largura}")
         return []
-    
+
+    # Se a altura foi predefinida pelo `processar_projeto`, usá-la diretamente
+    if not isinstance(altura, (int, float)) or altura <= 0:
+        logger.warning(f"⚠️ Altura não definida corretamente, assumindo 0. Verifique.")
+        altura = 0  # Garante que não tenha valores inválidos
+
     formula = obter_formula_por_id(id_formula)
     if not formula:
         return []

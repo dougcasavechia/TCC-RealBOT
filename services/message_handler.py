@@ -234,11 +234,46 @@ def apresentar_menu(contato, nome_cliente, opcoes, estado):
 
 def processar_projeto(contato, nome_cliente, projeto):
     """
-    Inicia o fluxo solicitando altura e largura do usuário.
+    Define altura e largura automaticamente para peças padrão.
+    Se for um projeto que requer entrada do usuário, pergunta normalmente.
     """
     global_state.informacoes_cliente[contato]["projeto_escolhido"] = projeto
-    enviar_mensagem(contato, "Informe a altura do vão ou da peça em milímetros:")
-    global_state.status_usuario[contato] = "aguardando_altura"
+
+    descricao_projeto = projeto.get("descricao_projeto", "").lower()
+    
+    # Definir altura automaticamente apenas para PEÇAS PADRÃO
+    if "box padrão" in descricao_projeto:
+        altura = 1845 if "fixo" in descricao_projeto else 1880
+    elif "janela padrão" in descricao_projeto:
+        altura = 938 if "fixo" in descricao_projeto else 975
+    else:
+        altura = None  # Outros tipos de projetos NÃO têm altura automática
+
+    # Definir largura automática apenas se for PEÇA PADRÃO
+    largura = None
+    if "box padrão" in descricao_projeto or "janela padrão" in descricao_projeto:
+        largura_opcao = global_state.informacoes_cliente[contato].get("definicao_3")  # A largura vem dessa definição
+        if largura_opcao and isinstance(largura_opcao, str):
+            numeros_encontrados = [int(s) for s in largura_opcao.split() if s.isdigit()]
+            if numeros_encontrados:
+                largura = numeros_encontrados[0]  # Pegamos o primeiro número encontrado
+
+    if altura is not None and largura is not None:
+        global_state.informacoes_cliente[contato]["altura"] = altura
+        global_state.informacoes_cliente[contato]["largura"] = largura
+
+        enviar_mensagem(contato, f"✅ Medidas definidas automaticamente:\n📏 Altura: {altura} mm\n📐 Largura: {largura} mm")
+
+        # Segue direto para a seleção de matéria-prima
+        opcoes_mp = gerar_menu_materia_prima()
+        if opcoes_mp:
+            apresentar_menu_mp(contato, opcoes_mp, "cor_materia_prima")
+        else:
+            enviar_mensagem(contato, "❌ Nenhuma matéria-prima disponível. Tente novamente mais tarde.")
+    else:
+        # 🚀 Se for um projeto que exige entrada de medidas, perguntar normalmente
+        enviar_mensagem(contato, "Informe a altura do vão ou da peça em milímetros:")
+        global_state.status_usuario[contato] = "aguardando_altura"
 
 
 def processar_altura(contato, texto):
