@@ -34,8 +34,8 @@ PROJECT_FILE_PATH = os.path.join(INPUT_DIR, "projetos.xlsx")
 MATERIAL_FILE_PATH = os.path.join(INPUT_DIR, "materia_prima.xlsx")
 
 # Configurações de tempo (fixas no código)
-TIMEOUT_WARNING = 5
-TIMEOUT_FINAL = 10
+TIMEOUT_WARNING = 60
+TIMEOUT_FINAL = 120
 
 # Função para criar os diretórios necessários
 def setup_directories():

@@ -2,14 +2,17 @@ import pandas as pd
 from logger import logger
 from services.client_service import ClienteCache
 from services.message_service import enviar_mensagem, salvar_mensagem_em_arquivo
-from services.product_service import gerar_menu_inicial, filtrar_projetos_por_escolhas, gerar_menu_por_definicao
+from services.product_service import gerar_menu_inicial, filtrar_projetos_por_escolhas, gerar_menu_por_definicao, carregar_tabela_projetos
 from services.state_service import atualizar_ultima_atividade
-from services.materials_service import gerar_menu_materia_prima, buscar_materia_prima, filtrar_mp_por_escolhas, carregar_tabela_mp
+from services.materials_service import gerar_menu_materia_prima, buscar_materia_prima, carregar_tabela_mp
+# from services.materials_service import filtrar_mp_por_escolhas
 from services.formula_service import calcular_pecas
-from services.pedidos_service import salvar_pedido
+from services.pedidos_service import calcular_valores_pecas, salvar_pedido
 from services.global_state import global_state
 
 df_clientes = ClienteCache.carregar_clientes()
+df_projetos = carregar_tabela_projetos()
+df_mp = carregar_tabela_mp()
 
 def gerenciar_mensagem_recebida(contato, texto):
     """
@@ -58,6 +61,8 @@ def gerenciar_mensagem_recebida(contato, texto):
         processar_resposta_adicionar_pecas(contato, texto)
     elif status == "aguardando_nome_pedido":  
         processar_resposta_finalizou(contato, texto)
+    elif status == "confirmar_finalizacao":
+        processar_confirmacao_pedido(contato, texto) 
     else:
         repetir_menu(contato, nome_cliente)
 
@@ -648,11 +653,21 @@ def perguntar_se_finalizou(contato):
     # Atualiza o estado do usuário para esperar a resposta
     global_state.status_usuario[contato] = "aguardando_resposta_adicionar"
 
+def obter_nome_projeto(id_projeto):
+    """Busca o nome do projeto pelo ID na tabela de projetos."""
+    projeto = df_projetos[df_projetos["id_projeto"] == id_projeto]
+    return projeto["descricao_projeto"].values[0] if not projeto.empty else "Projeto Desconhecido"
+
+def obter_nome_materia_prima(id_materia_prima):
+    """Busca o nome da matéria-prima pelo ID na tabela de materiais."""
+    materia = df_mp[df_mp["id_materia_prima"] == id_materia_prima]
+    return materia["descricao_materia_prima"].values[0] if not materia.empty else "Matéria-prima Desconhecida"
+
 def processar_resposta_finalizou(contato, texto):
     """
-    Finaliza o pedido e salva TODOS os projetos adicionados na tabela.
+    Antes de finalizar, gera um resumo do pedido e pede confirmação ao cliente.
+    Se o cliente confirmar, o pedido será salvo corretamente.
     """
-    # Obter o estado do usuário
     dados_usuario = global_state.informacoes_cliente.get(contato, {})
     nome_pedido = str(texto.strip())
 
@@ -660,39 +675,107 @@ def processar_resposta_finalizou(contato, texto):
         enviar_mensagem(contato, "❌ Nome inválido. Por favor, digite um nome para o pedido.")
         return
 
-    # Verificar se há pedidos acumulados
     pedidos_acumulados = dados_usuario.get("pedidos", [])
     if not pedidos_acumulados:
         enviar_mensagem(contato, "❌ Nenhum pedido encontrado para salvar. Reinicie o processo.")
         return
 
-    # Garantir que todos os pedidos usem o mesmo id_cliente
-    id_cliente = dados_usuario.get("id_cliente")  # Sempre pegue do estado global
+    id_cliente = dados_usuario.get("id_cliente")
     if not id_cliente:
-        logger.error(f"❌ ID do cliente ausente no estado global para {contato}.")
         enviar_mensagem(contato, "❌ Erro interno: ID do cliente não encontrado.")
         return
 
-    # Salvar todos os pedidos acumulados na planilha
+    resumo_pedido = f"📝 *Resumo do Pedido: {nome_pedido}*\n"
+    total_geral = 0
+    total_m2 = 0
+    total_pecas = 0
+
     for pedido in pedidos_acumulados:
-        salvar_pedido(
-            id_cliente=id_cliente,
-            nome_cliente=pedido.get("nome_cliente", "Cliente Desconhecido"),
-            id_projeto=pedido.get("id_projeto"),
-            id_materia_prima=pedido.get("id_materia_prima"),
-            altura_vao=pedido.get("altura_vao"),
-            largura_vao=pedido.get("largura_vao"),
-            pecas_calculadas=pedido.get("pecas", []),
-            valor_mp_m2=pedido.get("valor_mp_m2", 0.0),
-            nome_pedido=nome_pedido
-        )
+        nome_projeto = obter_nome_projeto(pedido["id_projeto"])
+        nome_mp = obter_nome_materia_prima(pedido["id_materia_prima"])
 
-    # Notificar o cliente e registrar no log
-    enviar_mensagem(contato, f"✅ Pedido **{nome_pedido}** finalizado com sucesso! Obrigado pela compra. 😊")
-    salvar_mensagem_em_arquivo(contato, "Bot", f"Pedido {nome_pedido} finalizado pelo usuário.")
+        pecas_calculadas, valor_total = calcular_valores_pecas(pedido["pecas"], pedido["valor_mp_m2"])
+        total_geral += valor_total
 
-    # Limpar os dados do usuário após salvar os pedidos
-    global_state.limpar_dados_usuario(contato)
+        resumo_pedido += f"*►►►►►►►►►►►►►►►►◄◄◄◄◄◄◄◄◄◄◄◄◄◄◄◄*\n"
+        resumo_pedido += f"📌 *Projeto:* {nome_projeto}\n"
+        resumo_pedido += f"🔹 *Matéria-prima:* {nome_mp}\n"
+        resumo_pedido += f"💰 *Valor por m²:* R${pedido['valor_mp_m2']:.2f}\n"
+        resumo_pedido += f"📦 *Quantidade de Projetos:* {dados_usuario.get('quantidade_total', 1)}\n\n"
+
+        for peca in pecas_calculadas:
+            resumo_pedido += f"🔸 {peca['quantidade']}x {peca['descricao_peca']} - {peca['altura_peca']}mm x {peca['largura_peca']}mm\n"
+            resumo_pedido += f"   📏 Área: {peca['area_m2']}m² | 💰 Valor: R${peca['valor_total']:.2f}\n"
+            total_m2 += peca["area_m2"]
+            total_pecas += peca["quantidade"]
+
+    resumo_pedido += f"*========================================*\n"
+    resumo_pedido += f"📏 *Área total:* {total_m2:.2f}m²\n"
+    resumo_pedido += f"📦 *Quantidade total de peças:* {total_pecas}\n"
+    resumo_pedido += f"💰 *Valor total do pedido:* R${total_geral:.2f}\n"
+    resumo_pedido += f"*========================================*\n"
+    resumo_pedido += "Deseja confirmar o pedido?\n1️⃣ Sim, finalizar\n2️⃣ Não, cancelar"
+
+    enviar_mensagem(contato, resumo_pedido)
+
+    # Atualiza o estado para aguardar confirmação
+    global_state.status_usuario[contato] = "confirmar_finalizacao"
+    global_state.informacoes_cliente[contato]["nome_pedido"] = nome_pedido
+
+
+def processar_confirmacao_pedido(contato, texto):
+    """
+    Processa a confirmação do usuário após exibir o resumo do pedido.
+    """
+    texto = texto.strip()
+
+    if texto == "1":  # Cliente quer finalizar o pedido
+        dados_usuario = global_state.informacoes_cliente.get(contato, {})
+        nome_pedido = dados_usuario.get("nome_pedido")
+
+        if not nome_pedido:
+            enviar_mensagem(contato, "❌ Erro interno: Nome do pedido não encontrado.")
+            return
+
+        pedidos_acumulados = dados_usuario.get("pedidos", [])
+        if not pedidos_acumulados:
+            enviar_mensagem(contato, "❌ Nenhum pedido encontrado para salvar.")
+            return
+
+        id_cliente = dados_usuario.get("id_cliente")
+        if not id_cliente:
+            enviar_mensagem(contato, "❌ Erro interno: ID do cliente não encontrado.")
+            return
+
+        # Salvar todos os pedidos acumulados
+        for pedido in pedidos_acumulados:
+            salvar_pedido(
+                id_cliente=id_cliente,
+                nome_cliente=pedido.get("nome_cliente", "Cliente Desconhecido"),
+                id_projeto=pedido.get("id_projeto"),
+                id_materia_prima=pedido.get("id_materia_prima"),
+                altura_vao=pedido.get("altura_vao"),
+                largura_vao=pedido.get("largura_vao"),
+                pecas_calculadas=pedido.get("pecas", []),
+                valor_mp_m2=pedido.get("valor_mp_m2", 0.0),
+                nome_pedido=nome_pedido
+            )
+
+        # Notificar o cliente e registrar no log
+        enviar_mensagem(contato, f"✅ Pedido **{nome_pedido}** finalizado com sucesso! Obrigado pela compra. 😊")
+        salvar_mensagem_em_arquivo(contato, "Bot", f"Pedido {nome_pedido} finalizado pelo usuário.")
+
+        # Limpar os dados do usuário
+        global_state.limpar_dados_usuario(contato)
+
+    elif texto == "2":  # Cliente quer cancelar o pedido
+        enviar_mensagem(contato, "🚫 Pedido cancelado.")
+        salvar_mensagem_em_arquivo(contato, "Bot", "Pedido cancelado pelo usuário.")
+        global_state.limpar_dados_usuario(contato)
+
+    else:
+        enviar_mensagem(contato, "❌ Opção inválida. Escolha:\n1️⃣ Sim, finalizar\n2️⃣ Não, cancelar")
+
 
 
 def finalizar_conversa(contato, nome_cliente):

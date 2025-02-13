@@ -37,8 +37,8 @@ def atualizar_ultima_atividade(contato):
 
 def enviar_aviso_inatividade(contato, status):
     """
-    Envia um aviso de inatividade ao usuário e repete a pergunta correta ou o menu correspondente.
-    Agora evita enviar múltiplos avisos seguidos e padroniza a mensagem.
+    Envia um aviso de inatividade e repete a última pergunta correta.
+    Agora evita menus errados.
     """
     nome_cliente = global_state.informacoes_cliente.get(contato, {}).get("nome_cliente", "Desconhecido")
 
@@ -46,27 +46,25 @@ def enviar_aviso_inatividade(contato, status):
         "aguardando_altura": "Informe a altura em milímetros:",
         "aguardando_largura": "Informe a largura em milímetros:",
         "aguardando_quantidade": "Quantas unidades desse projeto você deseja?",
-        "aguardando_nome_pedido": "Qual nome deseja dar para este pedido?",
-        "aguardando_resposta_adicionar": "Deseja adicionar mais peças ao pedido?\n1️⃣ Sim\n2️⃣ Não, finalizar pedido."
+        "confirmar_finalizacao": "Deseja confirmar o pedido?\n1️⃣ Sim, finalizar\n2️⃣ Não, cancelar",
     }
 
     if status in mensagens:
-        enviar_mensagem(contato, f"⏳ {mensagens[status]} Escolha em XXXX segundos, caso contrário seu fluxo será encerrado.")
+        enviar_mensagem(contato, f"⏳ {mensagens[status]} Escolha em breve, caso contrário seu fluxo será encerrado.")
         salvar_mensagem_em_arquivo(contato, nome_cliente, f"Bot: Aviso de inatividade para {status}.")
-    
     else:
-        # Se o usuário estava em um menu de seleção, repetir o menu corretamente
+        # Se o usuário estava em um menu de seleção, repetir o menu correto
         ultimo_menu = global_state.ultimo_menu_usuario.get(contato, [])
         if ultimo_menu:
             menu_formatado = "\n".join([f"{i + 1}. {opcao}" for i, opcao in enumerate(ultimo_menu)])
-            enviar_mensagem(contato, f"⏳ Escolha uma das opções do menu acima em XXXX segundos, caso contrário seu fluxo será encerrado.")
+            enviar_mensagem(contato, f"⏳ Escolha uma das opções do menu acima, caso contrário seu fluxo será encerrado.")
             enviar_mensagem(contato, menu_formatado)
-            salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Aviso de inatividade repetindo menu.")
+            salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Aviso de inatividade repetindo menu correto.")
         else:
             enviar_mensagem(contato, "⏳ Você está inativo. Seu fluxo será encerrado se não interagir em breve.")
             salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Aviso de inatividade enviado, sem menu.")
 
-    # Marcar o usuário como "inativo_" para evitar múltiplos avisos
+    # Agora armazenamos o estado antes de definir como inativo
     if not status.startswith("inativo_"):
         global_state.status_usuario[contato] = f"inativo_{status}"
 

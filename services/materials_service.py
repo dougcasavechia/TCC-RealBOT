@@ -27,43 +27,43 @@ def gerar_menu_materia_prima():
     
     return opcoes_iniciais
 
-def filtrar_mp_por_escolhas(cor_materia_prima=None, espessura_materia_prima=None, beneficiamento=None):
-    """Filtra as matérias-primas com base nas escolhas do usuário."""
-    df = carregar_tabela_mp()
-    if df is None or df.empty:
-        logger.warning("⚠️ A tabela de matérias-primas está vazia ou não foi carregada.")
-        return []
+# def filtrar_mp_por_escolhas(cor_materia_prima=None, espessura_materia_prima=None, beneficiamento=None):
+#     """Filtra as matérias-primas com base nas escolhas do usuário."""
+#     df = carregar_tabela_mp()
+#     if df is None or df.empty:
+#         logger.warning("⚠️ A tabela de matérias-primas está vazia ou não foi carregada.")
+#         return []
 
-    filtros = []
-    if cor_materia_prima:
-        filtros.append(f'cor_materia_prima == "{cor_materia_prima}"')
+#     filtros = []
+#     if cor_materia_prima:
+#         filtros.append(f'cor_materia_prima == "{cor_materia_prima}"')
 
-    # ✅ Se for "Peça Padrão", definir automaticamente espessura como 8mm
-    if espessura_materia_prima:
-        filtros.append(f'espessura_materia_prima == "{espessura_materia_prima}"')
-    elif cor_materia_prima and "peca_padrao" in cor_materia_prima.lower():
-        espessura_materia_prima = "08 mm"
-        filtros.append(f'espessura_materia_prima == "08 mm"')
-        logger.info(f"⚙️ Peça padrão detectada. Espessura definida automaticamente como 8mm.")
+#     # ✅ Se for "Peça Padrão", definir automaticamente espessura como 8mm
+#     if espessura_materia_prima:
+#         filtros.append(f'espessura_materia_prima == "{espessura_materia_prima}"')
+#     elif cor_materia_prima and "peca_padrao" in cor_materia_prima.lower():
+#         espessura_materia_prima = "08 mm"
+#         filtros.append(f'espessura_materia_prima == "08 mm"')
+#         logger.info(f"⚙️ Peça padrão detectada. Espessura definida automaticamente como 8mm.")
 
-    # ✅ Se for fixo, aplicar filtro de beneficiamento
-    if beneficiamento and cor_materia_prima.lower() == "fixo":
-        filtros.append(f'beneficiamento == "{beneficiamento}"')
+#     # ✅ Se for fixo, aplicar filtro de beneficiamento
+#     if beneficiamento and cor_materia_prima.lower() == "fixo":
+#         filtros.append(f'beneficiamento == "{beneficiamento}"')
 
-    if filtros:
-        try:
-            df = df.query(" and ".join(filtros))
-        except Exception as e:
-            logger.error(f"❌ Erro ao aplicar filtros: {e}", exc_info=True)
-            return []
+#     if filtros:
+#         try:
+#             df = df.query(" and ".join(filtros))
+#         except Exception as e:
+#             logger.error(f"❌ Erro ao aplicar filtros: {e}", exc_info=True)
+#             return []
 
-    if df.empty:
-        logger.info("⚠️ Nenhum resultado encontrado após filtragem.")
-        return []
+#     if df.empty:
+#         logger.info("⚠️ Nenhum resultado encontrado após filtragem.")
+#         return []
 
-    materias_primas = df.to_dict("records")
-    logger.info(f"📌 {len(materias_primas)} matérias-primas filtradas.")
-    return materias_primas
+#     materias_primas = df.to_dict("records")
+#     logger.info(f"📌 {len(materias_primas)} matérias-primas filtradas.")
+#     return materias_primas
 
 
 def buscar_materia_prima(dados_usuario):

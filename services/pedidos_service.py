@@ -41,43 +41,59 @@ def gerar_id_pedido():
         return f"{hoje}_9999"  # Retorna um valor especial em caso de erro
 
 
+def calcular_valores_pecas(pecas_calculadas, valor_mp_m2):
+    """
+    Calcula os valores do pedido com base nas peças e no valor do m² da matéria-prima.
+    Retorna uma lista com os cálculos individuais das peças e o valor total do pedido.
+    """
+    total_geral = 0
+    pedidos_calculados = []
+
+    for i, peca in enumerate(pecas_calculadas):
+        nome_peca = peca["nome_peca"]
+        altura_peca, largura_peca = peca["dimensoes"]
+        quantidade = peca["quantidade"]
+
+        area_total = (altura_peca / 1000) * (largura_peca / 1000) * quantidade
+        area_m2 = math.ceil(area_total / 0.25) * 0.25
+        valor_total = area_m2 * valor_mp_m2
+        total_geral += valor_total
+
+        pedidos_calculados.append({
+            "descricao_peca": nome_peca,
+            "quantidade": quantidade,
+            "altura_peca": altura_peca,
+            "largura_peca": largura_peca,
+            "area_m2": area_m2,
+            "valor_mp_m2": valor_mp_m2,
+            "valor_total": round(valor_total, 2)
+        })
+
+    return pedidos_calculados, round(total_geral, 2)
+
+
 def salvar_pedido(id_cliente, nome_cliente, id_projeto, id_materia_prima, altura_vao, largura_vao, pecas_calculadas, valor_mp_m2, nome_pedido):
     """
     Salva os pedidos no arquivo pedidos.xlsx consolidando os dados corretamente.
     """
     try:
-        pedidos = []
         id_pedido = gerar_id_pedido()
+        pedidos_calculados, total_geral = calcular_valores_pecas(pecas_calculadas, valor_mp_m2)
 
-        for i, peca in enumerate(pecas_calculadas):
-            nome_peca = peca["nome_peca"]
-            altura_peca, largura_peca = peca["dimensoes"]
-            quantidade = peca["quantidade"]
-
-            area_total = (altura_peca / 1000) * (largura_peca / 1000) * quantidade
-            area_m2 = math.ceil(area_total / 0.25) * 0.25
-            valor_total = area_m2 * valor_mp_m2
-
-            pedidos.append({
+        for i, pedido in enumerate(pedidos_calculados):
+            pedido.update({
                 "id_pedido": id_pedido,
                 "id_peca": f"{id_pedido}_{i + 1:03d}",
                 "id_cliente": id_cliente,
                 "nome_cliente": nome_cliente,
                 "id_projeto": id_projeto,
                 "id_materia_prima": int(id_materia_prima),
-                "descricao_peca": nome_peca,
-                "quantidade": quantidade,
                 "altura_vao": altura_vao,
                 "largura_vao": largura_vao,
-                "altura_peca": altura_peca,
-                "largura_peca": largura_peca,
-                "area_m2": area_m2,
-                "valor_mp_m2": valor_mp_m2,
-                "valor_total": round(valor_total, 2),
                 "nome_pedido": str(nome_pedido)
             })
 
-        df_novos_pedidos = pd.DataFrame(pedidos)
+        df_novos_pedidos = pd.DataFrame(pedidos_calculados)
 
         if os.path.exists(PEDIDOS_FILE_PATH):
             df_existente = pd.read_excel(PEDIDOS_FILE_PATH, dtype={"id_pedido": str})
@@ -86,7 +102,8 @@ def salvar_pedido(id_cliente, nome_cliente, id_projeto, id_materia_prima, altura
             df_final = df_novos_pedidos
 
         df_final.to_excel(PEDIDOS_FILE_PATH, index=False)
-        logger.info(f"💾 Pedido {id_pedido} salvo com sucesso!")
+        logger.info(f"💾 Pedido {id_pedido} salvo com sucesso! Valor total: R${total_geral:.2f}")
     except Exception as e:
         logger.error(f"❌ Erro ao salvar pedido: {e}", exc_info=True)
         enviar_mensagem(id_cliente, "❌ Erro ao salvar seu pedido. Tente novamente mais tarde.")
+
