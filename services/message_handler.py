@@ -693,27 +693,26 @@ def processar_resposta_finalizou(contato, texto):
     for pedido in pedidos_acumulados:
         nome_projeto = obter_nome_projeto(pedido["id_projeto"])
         nome_mp = obter_nome_materia_prima(pedido["id_materia_prima"])
-
         pecas_calculadas, valor_total = calcular_valores_pecas(pedido["pecas"], pedido["valor_mp_m2"])
         total_geral += valor_total
 
-        resumo_pedido += f"*►►►►►►►►►►►►►►►►◄◄◄◄◄◄◄◄◄◄◄◄◄◄◄◄*\n"
+        resumo_pedido += f"*►►►►►►►►►◄◄◄◄◄◄◄◄◄*\n"
         resumo_pedido += f"📌 *Projeto:* {nome_projeto}\n"
         resumo_pedido += f"🔹 *Matéria-prima:* {nome_mp}\n"
         resumo_pedido += f"💰 *Valor por m²:* R${pedido['valor_mp_m2']:.2f}\n"
-        resumo_pedido += f"📦 *Quantidade de Projetos:* {dados_usuario.get('quantidade_total', 1)}\n\n"
+        resumo_pedido += f"🏢 *Quantidade de Projetos:* {dados_usuario.get('quantidade_total', 1)}\n\n"
 
         for peca in pecas_calculadas:
             resumo_pedido += f"🔸 {peca['quantidade']}x {peca['descricao_peca']} - {peca['altura_peca']}mm x {peca['largura_peca']}mm\n"
-            resumo_pedido += f"   📏 Área: {peca['area_m2']}m² | 💰 Valor: R${peca['valor_total']:.2f}\n"
+            resumo_pedido += f"📏 Área: {peca['area_m2']}m² | 💰 Valor: R${peca['valor_total']:.2f}\n"
             total_m2 += peca["area_m2"]
             total_pecas += peca["quantidade"]
 
-    resumo_pedido += f"*========================================*\n"
+    resumo_pedido += f"*=========================*\n"
     resumo_pedido += f"📏 *Área total:* {total_m2:.2f}m²\n"
-    resumo_pedido += f"📦 *Quantidade total de peças:* {total_pecas}\n"
+    resumo_pedido += f"🏢 *Quantidade total de peças:* {total_pecas}\n"
     resumo_pedido += f"💰 *Valor total do pedido:* R${total_geral:.2f}\n"
-    resumo_pedido += f"*========================================*\n"
+    resumo_pedido += f"*=========================*\n"
     resumo_pedido += "Deseja confirmar o pedido?\n1️⃣ Sim, finalizar\n2️⃣ Não, cancelar"
 
     enviar_mensagem(contato, resumo_pedido)
