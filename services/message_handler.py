@@ -1,4 +1,5 @@
 import pandas as pd
+import os
 from logger import logger
 from services.client_service import ClienteCache
 from services.message_service import enviar_mensagem, salvar_mensagem_em_arquivo
@@ -7,12 +8,15 @@ from services.state_service import atualizar_ultima_atividade
 from services.materials_service import gerar_menu_materia_prima, buscar_materia_prima, carregar_tabela_mp
 # from services.materials_service import filtrar_mp_por_escolhas
 from services.formula_service import calcular_pecas
-from services.pedidos_service import calcular_valores_pecas, obter_nome_projeto, obter_nome_materia_prima, salvar_pedido
+from services.pedidos_service import calcular_valores_pecas, obter_nome_projeto, obter_nome_materia_prima, salvar_pedido, atualizar_status_pedido, visualizar_orcamentos
 from services.global_state import global_state
+from config import OUTPUT_DIR
 
 df_clientes = ClienteCache.carregar_clientes()
 df_projetos = carregar_tabela_projetos()
 df_mp = carregar_tabela_mp()
+
+PEDIDOS_FILE_PATH = os.path.join(OUTPUT_DIR, "pedidos.xlsx")
 
 def gerenciar_mensagem_recebida(contato, texto):
     """
@@ -28,21 +32,23 @@ def gerenciar_mensagem_recebida(contato, texto):
         enviar_mensagem(contato, "⚠️ Olá! Para continuar, é necessário realizar o cadastro. Procure um vendedor para se cadastrar. 📞")
         return  # Encerra o fluxo imediatamente
 
-    # ✅ Atualiza o tempo de atividade do usuário
+    nome_cliente = cliente_info["nome_cliente"]  # Obtendo nome do cliente
     atualizar_ultima_atividade(contato)
 
     # ✅ Restaurar estado caso o usuário estivesse inativo
     status = global_state.status_usuario.get(contato, "inicial")
     if status.startswith("inativo_") or status.startswith("aviso_enviado_"):
         logger.info(f"⏳ Retomando estado anterior para {contato}. Estado original: {status}")
-        status = status.replace("inativo_", "").replace("aviso_enviado_", "")  # Remove ambos os prefixos
-        global_state.status_usuario[contato] = status  # ✅ Corrigido para atualizar corretamente
+        status = status.replace("inativo_", "").replace("aviso_enviado_", "")
+        global_state.status_usuario[contato] = status  
 
-    nome_cliente = global_state.informacoes_cliente.get(contato, {}).get("nome_cliente", "Cliente").strip()
-
-    # ✅ Fluxo baseado no status atualizado
+    # ✅ Se o usuário estiver no estado "inicial", exibe o menu inicial
     if status == "inicial":
-        perguntar_tipo_medida(contato, nome_cliente)
+        mostrar_menu_inicial(contato, nome_cliente)
+    elif status == "menu_inicial":
+        processar_menu_inicial(contato, texto, nome_cliente)
+    elif status == "aguardando_confirmacao_pedido":
+        processar_confirmacao_pedido(contato, texto)
     elif status == "definindo_medida":
         processar_tipo_medida(contato, texto, nome_cliente)
     elif status == "definicao_1":
@@ -69,10 +75,26 @@ def gerenciar_mensagem_recebida(contato, texto):
         processar_resposta_adicionar_pecas(contato, texto)
     elif status == "aguardando_nome_pedido":  
         processar_resposta_finalizou(contato, texto)
-    elif status == "confirmar_finalizacao":
-        processar_confirmacao_pedido(contato, texto) 
+    elif status == "aguardando_autorizacao":
+        processar_resposta_autorizacao(contato, texto)
+    elif status == "escolhendo_orcamento":
+        processar_escolha_orcamento(contato, texto)
+    elif status == "gerenciando_orcamento":
+        processar_resposta_autorizacao(contato, texto)  # Reutilizando a mesma lógica
     else:
         repetir_menu(contato, nome_cliente)
+
+
+def mostrar_menu_inicial(contato, nome_cliente):
+    """
+    Apresenta o menu inicial para o usuário escolher entre fazer um orçamento ou visualizar orçamentos existentes.
+    """
+    menu = ["Fazer orçamento", "Visualizar orçamentos"]
+    enviar_mensagem(contato, f"Olá {nome_cliente}, o que deseja?")
+    enviar_mensagem(contato, "\n".join([f"{i + 1}. {opcao}" for i, opcao in enumerate(menu)]))
+
+    global_state.status_usuario[contato] = "menu_inicial"
+    global_state.ultimo_menu_usuario[contato] = menu
 
 
 def perguntar_tipo_medida(contato, nome_cliente):
@@ -138,6 +160,82 @@ def iniciar_conversa(contato, nome_cliente):
         enviar_mensagem(contato, "❌ Não há opções disponíveis para a medida escolhida. Tente novamente mais tarde.")
         salvar_mensagem_em_arquivo(contato, nome_cliente, "Bot: Menu inicial vazio.")
         finalizar_conversa(contato, nome_cliente)
+
+def processar_menu_inicial(contato, texto, nome_cliente):
+    """
+    Processa a escolha do usuário no menu inicial.
+    """
+    try:
+        escolha = int(texto)
+        if escolha == 1:
+            # Usuário quer fazer um orçamento (segue fluxo normal)
+            perguntar_tipo_medida(contato, nome_cliente)
+        elif escolha == 2:
+            # Usuário quer visualizar orçamentos
+            visualizar_orcamentos(contato, nome_cliente)
+        else:
+            raise ValueError("Opção inválida.")
+    except ValueError:
+        enviar_mensagem(contato, "❌ Opção inválida. Escolha entre:\n1️⃣ Fazer orçamento\n2️⃣ Visualizar orçamentos")
+
+
+def processar_escolha_orcamento(contato, texto):
+    """
+    Exibe o resumo do orçamento escolhido antes de oferecer as opções de autorizar produção, manter orçamento ou cancelar.
+    """
+    try:
+        opcoes = global_state.ultimo_menu_usuario.get(contato, [])
+        escolha = int(texto) - 1
+
+        if escolha < 0 or escolha >= len(opcoes):
+            raise ValueError("Opção inválida.")
+
+        id_pedido, nome_pedido = opcoes[escolha]
+
+        # 🔹 Carregar todas as peças do pedido selecionado
+        df_pedidos = pd.read_excel(PEDIDOS_FILE_PATH)
+        df_pedido = df_pedidos[df_pedidos["id_pedido"] == id_pedido]
+
+        if df_pedido.empty:
+            enviar_mensagem(contato, "❌ Erro ao carregar o pedido. Tente novamente.")
+            return
+
+        # 🔹 Construir resumo do pedido
+        resumo_pedido = f"📝 *Resumo do Pedido: {nome_pedido}*\n"
+        total_geral = 0
+        total_m2 = 0
+        total_pecas = 0
+
+        for _, peca in df_pedido.iterrows():
+            resumo_pedido += f"*►►►►►►►►►◄◄◄◄◄◄◄◄◄*\n"
+            resumo_pedido += f"📌 *Projeto:* {peca['descricao_projeto']}\n"
+            resumo_pedido += f"🔹 *Matéria-prima:* {peca['descricao_materia_prima']}\n"
+            resumo_pedido += f"💰 *Valor por m²:* R${peca['valor_mp_m2']:.2f}\n"
+            resumo_pedido += f"🏢 *Quantidade de Projetos:* {df_pedido['id_pedido'].nunique()}\n\n"
+            resumo_pedido += f"🔸 {peca['quantidade']}x {peca['descricao_peca']} - {peca['altura_peca']}mm x {peca['largura_peca']}mm\n"
+            resumo_pedido += f"📏 Área: {peca['area_m2']}m² | 💰 Valor: R${peca['valor_total']:.2f}\n"
+            total_m2 += peca["area_m2"]
+            total_pecas += peca["quantidade"]
+            total_geral += peca["valor_total"]
+
+        resumo_pedido += f"*=========================*\n"
+        resumo_pedido += f"📏 *Área total:* {total_m2:.2f}m²\n"
+        resumo_pedido += f"🏢 *Quantidade total de peças:* {total_pecas}\n"
+        resumo_pedido += f"💰 *Valor total do pedido:* R${total_geral:.2f}\n"
+        resumo_pedido += f"*=========================*\n"
+
+        enviar_mensagem(contato, resumo_pedido)
+
+        # 🔹 Perguntar se deseja autorizar produção, manter orçamento ou cancelar
+        enviar_mensagem(contato, "📌 O que deseja fazer com esse orçamento?")
+        enviar_mensagem(contato, "1️⃣ Sim, autorizar produção\n2️⃣ Não, manter como orçamento\n3️⃣ Cancelar pedido")
+
+        global_state.status_usuario[contato] = "gerenciando_orcamento"
+        global_state.informacoes_cliente[contato]["id_pedido"] = id_pedido
+        global_state.informacoes_cliente[contato]["nome_pedido"] = nome_pedido
+
+    except (ValueError, IndexError):
+        enviar_mensagem(contato, "❌ Opção inválida. Escolha um número da lista.")
 
 
 def processar_menu_dinamico_produto(contato, texto, nome_cliente, estado_atual):
@@ -664,8 +762,9 @@ def perguntar_se_finalizou(contato):
 
 def processar_resposta_finalizou(contato, texto):
     """
-    Antes de finalizar, gera um resumo do pedido e pede confirmação ao cliente.
-    Se o cliente confirmar, o pedido será salvo corretamente.
+    Antes de finalizar, gera um resumo do pedido e pede autorização para produção.
+    Se o cliente confirmar, o pedido será salvo corretamente com status 'AUTORIZADO'.
+    Caso contrário, será mantido como 'ORÇAMENTO' ou 'CANCELADO'.
     """
     dados_usuario = global_state.informacoes_cliente.get(contato, {})
     nome_pedido = str(texto.strip())
@@ -712,41 +811,87 @@ def processar_resposta_finalizou(contato, texto):
     resumo_pedido += f"🏢 *Quantidade total de peças:* {total_pecas}\n"
     resumo_pedido += f"💰 *Valor total do pedido:* R${total_geral:.2f}\n"
     resumo_pedido += f"*=========================*\n"
-    resumo_pedido += "Deseja confirmar o pedido?\n1️⃣ Sim, finalizar\n2️⃣ Não, cancelar"
 
+    # 🔹 NOVO: Perguntar sobre autorização corretamente
     enviar_mensagem(contato, resumo_pedido)
+    enviar_mensagem(contato, "📌 Pedido salvo como ORÇAMENTO.")
+    enviar_mensagem(contato, "Autoriza a produção do pedido acima?")
+    enviar_mensagem(contato, "1️⃣ Sim, autorizar produção\n2️⃣ Não, manter como orçamento\n3️⃣ Cancelar pedido")
 
-    # Atualiza o estado para aguardar confirmação
-    global_state.status_usuario[contato] = "confirmar_finalizacao"
+    # Atualiza o estado para aguardar a decisão final do usuário
+    global_state.status_usuario[contato] = "aguardando_autorizacao"
     global_state.informacoes_cliente[contato]["nome_pedido"] = nome_pedido
+
+    # Atualiza o estado para aguardar a decisão final do usuário
+    global_state.status_usuario[contato] = "aguardando_confirmacao_pedido"
+    global_state.informacoes_cliente[contato]["nome_pedido"] = nome_pedido
+
+
+def processar_resposta_autorizacao(contato, texto):
+    """
+    Processa a resposta do usuário sobre autorizar, manter como orçamento ou cancelar.
+    """
+    dados_usuario = global_state.informacoes_cliente.get(contato, {})
+    id_pedido = dados_usuario.get("id_pedido", "")
+    nome_pedido = dados_usuario.get("nome_pedido", "")
+
+    if not nome_pedido or not id_pedido:
+        enviar_mensagem(contato, "❌ Erro interno: Pedido não encontrado.")
+        return
+
+    if texto == "1":
+        atualizar_status_pedido(nome_pedido, "AUTORIZADO")
+        mensagem_final = f"✅ Pedido **{nome_pedido}** foi AUTORIZADO para produção! 🏭"
+    elif texto == "2":
+        atualizar_status_pedido(nome_pedido, "ORÇAMENTO")
+        mensagem_final = f"📋 Pedido **{nome_pedido}** foi mantido como ORÇAMENTO. Você pode acessá-lo depois."
+    elif texto == "3":
+        atualizar_status_pedido(nome_pedido, "CANCELADO")
+        mensagem_final = f"🚫 Pedido **{nome_pedido}** foi CANCELADO."
+    else:
+        enviar_mensagem(contato, "❌ Opção inválida. Escolha uma das opções do menu.")
+        return
+
+    enviar_mensagem(contato, mensagem_final)
+    global_state.limpar_dados_usuario(contato)
+
 
 
 def processar_confirmacao_pedido(contato, texto):
     """
     Processa a confirmação do usuário após exibir o resumo do pedido.
+    Se for autorizado ou mantido como orçamento, salva as peças corretamente.
     """
     texto = texto.strip()
 
-    if texto == "1":  # Cliente quer finalizar o pedido
-        dados_usuario = global_state.informacoes_cliente.get(contato, {})
-        nome_pedido = dados_usuario.get("nome_pedido")
+    if texto not in ["1", "2", "3"]:
+        enviar_mensagem(contato, "❌ Opção inválida. Escolha:\n1️⃣ Sim, autorizar produção\n2️⃣ Não, manter como orçamento\n3️⃣ Cancelar pedido")
+        return
 
-        if not nome_pedido:
-            enviar_mensagem(contato, "❌ Erro interno: Nome do pedido não encontrado.")
-            return
+    dados_usuario = global_state.informacoes_cliente.get(contato, {})
+    nome_pedido = dados_usuario.get("nome_pedido")
 
-        pedidos_acumulados = dados_usuario.get("pedidos", [])
-        if not pedidos_acumulados:
-            enviar_mensagem(contato, "❌ Nenhum pedido encontrado para salvar.")
-            return
+    if not nome_pedido:
+        enviar_mensagem(contato, "❌ Erro interno: Nome do pedido não encontrado.")
+        return
 
-        id_cliente = dados_usuario.get("id_cliente")
-        if not id_cliente:
-            enviar_mensagem(contato, "❌ Erro interno: ID do cliente não encontrado.")
-            return
+    pedidos_acumulados = dados_usuario.get("pedidos", [])
+    if not pedidos_acumulados:
+        enviar_mensagem(contato, "❌ Nenhum pedido encontrado para salvar.")
+        return
 
-        # Salvar todos os pedidos acumulados
+    id_cliente = dados_usuario.get("id_cliente")
+    if not id_cliente:
+        enviar_mensagem(contato, "❌ Erro interno: ID do cliente não encontrado.")
+        return
+
+    if texto in ["1", "2"]:  # Autorizar produção ou manter como orçamento
+        status_final = "AUTORIZADO" if texto == "1" else "ORÇAMENTO"
+
         for pedido in pedidos_acumulados:
+            logger.debug(f"📝 Salvando pedido: {pedido}")  
+            logger.debug(f"📦 Peças recebidas para salvar: {pedido.get('pecas', [])}")
+
             salvar_pedido(
                 id_cliente=id_cliente,
                 nome_cliente=pedido.get("nome_cliente", "Cliente Desconhecido"),
@@ -759,21 +904,21 @@ def processar_confirmacao_pedido(contato, texto):
                 nome_pedido=nome_pedido
             )
 
-        # Notificar o cliente e registrar no log
-        enviar_mensagem(contato, f"✅ Pedido **{nome_pedido}** finalizado com sucesso! Obrigado pela compra. 😊")
-        salvar_mensagem_em_arquivo(contato, "Bot", f"Pedido {nome_pedido} finalizado pelo usuário.")
+        atualizar_status_pedido(nome_pedido, status_final)
 
-        # Limpar os dados do usuário
-        global_state.limpar_dados_usuario(contato)
+        if texto == "1":
+            mensagem_final = f"✅ Pedido **{nome_pedido}** foi AUTORIZADO para produção! 🏭"
+        else:
+            mensagem_final = f"📋 Pedido **{nome_pedido}** foi mantido como ORÇAMENTO. Você pode acessá-lo depois."
 
-    elif texto == "2":  # Cliente quer cancelar o pedido
-        enviar_mensagem(contato, "🚫 Pedido cancelado.")
-        salvar_mensagem_em_arquivo(contato, "Bot", "Pedido cancelado pelo usuário.")
-        global_state.limpar_dados_usuario(contato)
+    elif texto == "3":  # Cliente cancela o pedido
+        atualizar_status_pedido(nome_pedido, "CANCELADO")
+        mensagem_final = f"🚫 Pedido **{nome_pedido}** foi CANCELADO. Caso precise, pode criar um novo orçamento."
 
-    else:
-        enviar_mensagem(contato, "❌ Opção inválida. Escolha:\n1️⃣ Sim, finalizar\n2️⃣ Não, cancelar")
+    enviar_mensagem(contato, mensagem_final)
 
+    # Limpar os dados do usuário após o processamento
+    global_state.limpar_dados_usuario(contato)
 
 
 def finalizar_conversa(contato, nome_cliente):
