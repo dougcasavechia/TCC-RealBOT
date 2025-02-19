@@ -7,7 +7,7 @@ from services.state_service import atualizar_ultima_atividade
 from services.materials_service import gerar_menu_materia_prima, buscar_materia_prima, carregar_tabela_mp
 # from services.materials_service import filtrar_mp_por_escolhas
 from services.formula_service import calcular_pecas
-from services.pedidos_service import calcular_valores_pecas, salvar_pedido
+from services.pedidos_service import calcular_valores_pecas, obter_nome_projeto, obter_nome_materia_prima, salvar_pedido
 from services.global_state import global_state
 
 df_clientes = ClienteCache.carregar_clientes()
@@ -19,6 +19,14 @@ def gerenciar_mensagem_recebida(contato, texto):
     Processa mensagens recebidas e decide o fluxo com base no estado do usuário.
     """
     logger.info(f"📩 Mensagem recebida - contato: {contato}, texto: {texto}")
+
+    # ✅ Verificar se o número está cadastrado
+    cliente_info = ClienteCache.buscar_cliente_por_telefone(contato)
+    
+    if not cliente_info:
+        logger.warning(f"❌ Número {contato} não cadastrado. Encerrando fluxo.")
+        enviar_mensagem(contato, "⚠️ Olá! Para continuar, é necessário realizar o cadastro. Procure um vendedor para se cadastrar. 📞")
+        return  # Encerra o fluxo imediatamente
 
     # ✅ Atualiza o tempo de atividade do usuário
     atualizar_ultima_atividade(contato)
@@ -653,15 +661,6 @@ def perguntar_se_finalizou(contato):
     # Atualiza o estado do usuário para esperar a resposta
     global_state.status_usuario[contato] = "aguardando_resposta_adicionar"
 
-def obter_nome_projeto(id_projeto):
-    """Busca o nome do projeto pelo ID na tabela de projetos."""
-    projeto = df_projetos[df_projetos["id_projeto"] == id_projeto]
-    return projeto["descricao_projeto"].values[0] if not projeto.empty else "Projeto Desconhecido"
-
-def obter_nome_materia_prima(id_materia_prima):
-    """Busca o nome da matéria-prima pelo ID na tabela de materiais."""
-    materia = df_mp[df_mp["id_materia_prima"] == id_materia_prima]
-    return materia["descricao_materia_prima"].values[0] if not materia.empty else "Matéria-prima Desconhecida"
 
 def processar_resposta_finalizou(contato, texto):
     """

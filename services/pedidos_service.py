@@ -4,8 +4,10 @@ import math
 from datetime import datetime
 from config import OUTPUT_DIR
 from logger import logger
-from services.global_state import global_state
+# from services.global_state import global_state
 from services.message_service import enviar_mensagem
+from services.materials_service import carregar_tabela_mp
+from services.product_service import carregar_tabela_projetos
 
 # Caminho do arquivo de pedidos
 PEDIDOS_FILE_PATH = os.path.join(OUTPUT_DIR, "pedidos.xlsx")
@@ -72,22 +74,42 @@ def calcular_valores_pecas(pecas_calculadas, valor_mp_m2):
     return pedidos_calculados, round(total_geral, 2)
 
 
+def obter_nome_materia_prima(id_materia_prima):
+    """Busca a descrição da matéria-prima pelo ID."""
+    df_mp = carregar_tabela_mp()
+    materia = df_mp[df_mp["id_materia_prima"] == id_materia_prima]
+    return materia["descricao_materia_prima"].values[0] if not materia.empty else "Matéria-prima Desconhecida"
+
+def obter_nome_projeto(id_projeto):
+    """Busca a descrição do projeto pelo ID."""
+    df_projetos = carregar_tabela_projetos()
+    projeto = df_projetos[df_projetos["id_projeto"] == id_projeto]
+    return projeto["descricao_projeto"].values[0] if not projeto.empty else "Projeto Desconhecido"
+
+
 def salvar_pedido(id_cliente, nome_cliente, id_projeto, id_materia_prima, altura_vao, largura_vao, pecas_calculadas, valor_mp_m2, nome_pedido):
     """
     Salva os pedidos no arquivo pedidos.xlsx consolidando os dados corretamente.
+    Agora armazena a descrição do projeto e da matéria-prima em vez dos IDs.
     """
     try:
         id_pedido = gerar_id_pedido()
         pedidos_calculados, total_geral = calcular_valores_pecas(pecas_calculadas, valor_mp_m2)
 
+        # Buscar descrições
+        descricao_projeto = obter_nome_projeto(id_projeto)
+        descricao_materia_prima = obter_nome_materia_prima(id_materia_prima)
+
         for i, pedido in enumerate(pedidos_calculados):
             pedido.update({
                 "id_pedido": id_pedido,
                 "id_peca": f"{id_pedido}_{i + 1:03d}",
-                "id_cliente": id_cliente,
+                "id_cliente": int(id_cliente),
                 "nome_cliente": nome_cliente,
-                "id_projeto": id_projeto,
+                "id_projeto": int(id_projeto),
+                "descricao_projeto": descricao_projeto,  
                 "id_materia_prima": int(id_materia_prima),
+                "descricao_materia_prima": descricao_materia_prima,
                 "altura_vao": altura_vao,
                 "largura_vao": largura_vao,
                 "nome_pedido": str(nome_pedido)
@@ -106,4 +128,5 @@ def salvar_pedido(id_cliente, nome_cliente, id_projeto, id_materia_prima, altura
     except Exception as e:
         logger.error(f"❌ Erro ao salvar pedido: {e}", exc_info=True)
         enviar_mensagem(id_cliente, "❌ Erro ao salvar seu pedido. Tente novamente mais tarde.")
+
 
