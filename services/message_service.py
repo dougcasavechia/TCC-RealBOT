@@ -8,6 +8,8 @@ import time
 def enviar_mensagem(contato, mensagem, tentativas=3, intervalo=2):
     """Envia uma mensagem via API do WhatsApp, com tentativas de reenvio em caso de falha."""
     
+    time.sleep(0.2)
+
     if contato.lower() == "status":
         logger.warning("🚫 Tentativa de envio de mensagem para 'status' bloqueada.")
         return False
