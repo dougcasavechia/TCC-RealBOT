@@ -88,36 +88,35 @@ def obter_nome_projeto(id_projeto):
 
 
 def atualizar_status_pedido(nome_pedido, novo_status):
-    """
-    Atualiza o status do pedido no Excel (ORÇAMENTO, AUTORIZADO ou CANCELADO).
-    """
+    """Atualiza o status do pedido no Excel e registra a data/hora do pedido se for autorizado."""
     try:
         df_pedidos = pd.read_excel(PEDIDOS_FILE_PATH)
 
         if "status_pedido" not in df_pedidos.columns:
             df_pedidos["status_pedido"] = "ORÇAMENTO"  # Garante a existência da coluna
 
-        # 🔹 Verifica se o pedido existe antes de atualizar
         if nome_pedido not in df_pedidos["nome_pedido"].values:
             logger.warning(f"⚠️ Pedido '{nome_pedido}' não encontrado no Excel. Nenhuma alteração feita.")
             return
 
-        # Atualiza o status corretamente
         df_pedidos.loc[df_pedidos["nome_pedido"] == nome_pedido, "status_pedido"] = novo_status
+
+        if novo_status == "AUTORIZADO":
+            data_pedido = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # ✅ Captura data/hora da autorização
+            df_pedidos.loc[df_pedidos["nome_pedido"] == nome_pedido, "data_pedido"] = data_pedido
+            logger.info(f"📌 Pedido '{nome_pedido}' autorizado em {data_pedido}.")
+
         df_pedidos.to_excel(PEDIDOS_FILE_PATH, index=False)
 
-        logger.info(f"📌 Status do pedido '{nome_pedido}' atualizado para {novo_status}.")
     except Exception as e:
         logger.error(f"❌ Erro ao atualizar status do pedido '{nome_pedido}': {e}")
 
 
-def salvar_pedido(id_cliente, nome_cliente, id_projeto, id_materia_prima, altura_vao, largura_vao, pecas_calculadas, valor_mp_m2, nome_pedido, regiao):
-    """Salva os pedidos no arquivo pedidos.xlsx, garantindo que todas as peças sejam registradas corretamente."""
+def salvar_pedido(id_cliente, nome_cliente, regiao, id_projeto, id_materia_prima, altura_vao, largura_vao, pecas_calculadas, valor_mp_m2, nome_pedido):
+    """Salva o orçamento inicial na tabela de pedidos."""
     try:
         id_pedido = gerar_id_pedido()
-
-        if not pecas_calculadas:
-            logger.error(f"❌ Nenhuma peça recebida para salvar no pedido {id_pedido}!")
+        data_orcamento = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # ✅ Captura a data/hora do orçamento
 
         pedidos_calculados, total_geral = calcular_valores_pecas(pecas_calculadas, valor_mp_m2)
 
@@ -132,7 +131,7 @@ def salvar_pedido(id_cliente, nome_cliente, id_projeto, id_materia_prima, altura
                 "id_peca": f"{id_pedido}_{i + 1:03d}",
                 "id_cliente": int(id_cliente),
                 "nome_cliente": nome_cliente,
-                "regiao": regiao,  # ✅ Salva a região no pedido final
+                "regiao": regiao,
                 "id_projeto": int(id_projeto),
                 "descricao_projeto": descricao_projeto,
                 "id_materia_prima": int(id_materia_prima),
@@ -140,7 +139,9 @@ def salvar_pedido(id_cliente, nome_cliente, id_projeto, id_materia_prima, altura
                 "altura_vao": altura_vao,
                 "largura_vao": largura_vao,
                 "nome_pedido": str(nome_pedido),
-                "status_pedido": "ORÇAMENTO"
+                "status_pedido": "ORÇAMENTO",
+                "data_orcamento": data_orcamento,  # ✅ Nova coluna para a data do orçamento
+                "data_pedido": ""  # Inicialmente vazia, será preenchida quando autorizado
             })
 
             pedidos_completos.append(pedido)
@@ -154,12 +155,11 @@ def salvar_pedido(id_cliente, nome_cliente, id_projeto, id_materia_prima, altura
             df_final = df_novos_pedidos
 
         df_final.to_excel(PEDIDOS_FILE_PATH, index=False)
-        logger.info(f"💾 Pedido {id_pedido} salvo com sucesso! Valor total: R${total_geral:.2f}")
+        logger.info(f"💾 Pedido {id_pedido} salvo com sucesso! Orçamento concluído em {data_orcamento}.")
 
     except Exception as e:
         logger.error(f"❌ Erro ao salvar pedido: {e}", exc_info=True)
         enviar_mensagem(id_cliente, "❌ Erro ao salvar seu pedido. Tente novamente mais tarde.")
-
 
 # def processar_resposta_autorizacao(contato, texto):
 #     """
@@ -201,21 +201,22 @@ def visualizar_orcamentos(contato, nome_cliente):
             enviar_mensagem(contato, "⚠️ Não foi possível carregar seus orçamentos.")
             return
 
-        # 🔹 Filtrar pedidos do cliente que ainda estão como ORÇAMENTO
-        print("###########################")
-        print(contato)
-        print("###########################")
         df_pedidos = df_pedidos[(df_pedidos["nome_cliente"] == nome_cliente) & (df_pedidos["status_pedido"] == "ORÇAMENTO")]
 
         if df_pedidos.empty:
             enviar_mensagem(contato, "📋 Você não tem orçamentos pendentes.")
+            
+            # ✅ Corrigido: Resetar o status do usuário corretamente
+            global_state.status_usuario[contato] = "inicial"
+            global_state.ultimo_menu_usuario.pop(contato, None)
+            global_state.informacoes_cliente.pop(contato, None)
+            
             return
 
-        # 🔹 Remover duplicatas (exibir apenas um por id_pedido)
         df_pedidos = df_pedidos.drop_duplicates(subset=["id_pedido"])
 
         menu_pedidos = ["📜 *Lista de Orçamentos:*"]
-        opcoes_menu = []  # Armazena os IDs e nomes para controle
+        opcoes_menu = []  
 
         for _, pedido in df_pedidos.iterrows():
             id_pedido = pedido["id_pedido"]
@@ -226,7 +227,7 @@ def visualizar_orcamentos(contato, nome_cliente):
         menu_pedidos.append("\nEscolha um orçamento para gerenciar:")
         enviar_mensagem(contato, "\n".join(menu_pedidos))
 
-        # 🔹 Salvar as opções para o usuário escolher depois
+        # ✅ Se o usuário decidir não escolher nada, resetar o status depois de um tempo
         global_state.status_usuario[contato] = "escolhendo_orcamento"
         global_state.ultimo_menu_usuario[contato] = opcoes_menu
 
