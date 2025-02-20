@@ -678,12 +678,9 @@ def repetir_menu(contato, nome_cliente):
 
 
 def adicionar_pecas_pedido(contato, nome_cliente):
-    """
-    Acumula os pedidos no estado global e garante que o id_cliente seja correto.
-    """
+    """Acumula os pedidos no estado global e garante que o id_cliente seja correto."""
     dados_usuario = global_state.informacoes_cliente.get(contato, {})
 
-    # Buscar o cliente pelo telefone
     cliente_info = ClienteCache.buscar_cliente_por_telefone(contato)
     if not cliente_info:
         logger.error(f"❌ Cliente não encontrado para o número {contato}.")
@@ -692,12 +689,12 @@ def adicionar_pecas_pedido(contato, nome_cliente):
 
     id_cliente = cliente_info["id_cliente"]
     nome_cliente = cliente_info["nome_cliente"]
+    regiao = cliente_info.get("regiao", "Região Desconhecida")
 
-    # Atualizar o estado do cliente com as informações corretas
     dados_usuario["id_cliente"] = id_cliente
     dados_usuario["nome_cliente"] = nome_cliente
+    dados_usuario["regiao"] = regiao
 
-    # Continuar o processamento normalmente
     pedidos_acumulados = dados_usuario.get("pedidos", [])
     id_materia_prima, valor_mp_m2 = buscar_materia_prima(dados_usuario)
 
@@ -708,7 +705,8 @@ def adicionar_pecas_pedido(contato, nome_cliente):
     pecas_calculadas = dados_usuario.get("pecas", [])
     novo_pedido = {
         "id_cliente": id_cliente,
-        "nome_cliente": nome_cliente,  # Nome atualizado
+        "nome_cliente": nome_cliente,
+        "regiao": regiao,  # ✅ Inclui a região no pedido
         "id_projeto": dados_usuario.get("projeto_escolhido", {}).get("id_projeto"),
         "id_materia_prima": id_materia_prima,
         "valor_mp_m2": valor_mp_m2,
@@ -895,6 +893,7 @@ def processar_confirmacao_pedido(contato, texto):
             salvar_pedido(
                 id_cliente=id_cliente,
                 nome_cliente=pedido.get("nome_cliente", "Cliente Desconhecido"),
+                regiao=pedido.get("regiao", "Região Desconhecida"),
                 id_projeto=pedido.get("id_projeto"),
                 id_materia_prima=pedido.get("id_materia_prima"),
                 altura_vao=pedido.get("altura_vao"),

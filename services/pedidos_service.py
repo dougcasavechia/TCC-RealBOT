@@ -111,23 +111,15 @@ def atualizar_status_pedido(nome_pedido, novo_status):
         logger.error(f"❌ Erro ao atualizar status do pedido '{nome_pedido}': {e}")
 
 
-def salvar_pedido(id_cliente, nome_cliente, id_projeto, id_materia_prima, altura_vao, largura_vao, pecas_calculadas, valor_mp_m2, nome_pedido):
-    """
-    Salva os pedidos no arquivo pedidos.xlsx, garantindo que todas as peças sejam registradas corretamente.
-    """
+def salvar_pedido(id_cliente, nome_cliente, id_projeto, id_materia_prima, altura_vao, largura_vao, pecas_calculadas, valor_mp_m2, nome_pedido, regiao):
+    """Salva os pedidos no arquivo pedidos.xlsx, garantindo que todas as peças sejam registradas corretamente."""
     try:
         id_pedido = gerar_id_pedido()
-        
-        # 🔍 Debug: Verifica se as peças chegaram
-        logger.debug(f"📦 Peças recebidas em salvar_pedido(): {pecas_calculadas}")
 
         if not pecas_calculadas:
             logger.error(f"❌ Nenhuma peça recebida para salvar no pedido {id_pedido}!")
 
         pedidos_calculados, total_geral = calcular_valores_pecas(pecas_calculadas, valor_mp_m2)
-
-        # 🔍 Debug: Confirma que as peças foram calculadas corretamente
-        logger.debug(f"📏 Peças calculadas para o pedido {id_pedido}: {pedidos_calculados}")
 
         descricao_projeto = obter_nome_projeto(id_projeto)
         descricao_materia_prima = obter_nome_materia_prima(id_materia_prima)
@@ -137,25 +129,23 @@ def salvar_pedido(id_cliente, nome_cliente, id_projeto, id_materia_prima, altura
         for i, pedido in enumerate(pedidos_calculados):
             pedido.update({
                 "id_pedido": id_pedido,
-                "id_peca": f"{id_pedido}_{i + 1:03d}",  
+                "id_peca": f"{id_pedido}_{i + 1:03d}",
                 "id_cliente": int(id_cliente),
                 "nome_cliente": nome_cliente,
+                "regiao": regiao,  # ✅ Salva a região no pedido final
                 "id_projeto": int(id_projeto),
-                "descricao_projeto": descricao_projeto,  
+                "descricao_projeto": descricao_projeto,
                 "id_materia_prima": int(id_materia_prima),
                 "descricao_materia_prima": descricao_materia_prima,
                 "altura_vao": altura_vao,
                 "largura_vao": largura_vao,
                 "nome_pedido": str(nome_pedido),
-                "status_pedido": "ORÇAMENTO"  
+                "status_pedido": "ORÇAMENTO"
             })
 
             pedidos_completos.append(pedido)
 
         df_novos_pedidos = pd.DataFrame(pedidos_completos)
-
-        # 🔍 Debug: Verificar como o DataFrame final está antes de salvar
-        logger.debug(f"📄 DataFrame final antes de salvar:\n{df_novos_pedidos}")
 
         if os.path.exists(PEDIDOS_FILE_PATH):
             df_existente = pd.read_excel(PEDIDOS_FILE_PATH, dtype={"id_pedido": str})

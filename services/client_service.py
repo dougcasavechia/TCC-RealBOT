@@ -51,9 +51,8 @@ class ClienteCache:
         if not cliente.empty:
             logger.info(f"✅ Cliente encontrado: {contato}")
 
-            # Procurar a coluna correta do nome do cliente
-            col_nome_cliente = next((col for col in df_clientes.columns 
-                                     if col.strip().lower() in ["nome", "nome_cliente", "cliente", "nome_do_cliente"]), None)
+            col_nome_cliente = next((col for col in df_clientes.columns if col.strip().lower() in ["nome", "nome_cliente", "cliente", "nome_do_cliente"]), None)
+            col_regiao = next((col for col in df_clientes.columns if col.strip().lower() in ["regiao", "região", "localizacao"]), None)
 
             if not col_nome_cliente:
                 logger.error("❌ Nenhuma coluna correspondente a 'nome' encontrada no arquivo de clientes!")
@@ -61,12 +60,14 @@ class ClienteCache:
 
             return {
                 "id_cliente": cliente.iloc[0]["id_cliente"],
-                "nome_cliente": cliente.iloc[0][col_nome_cliente],  
-                "telefone": contato
+                "nome_cliente": cliente.iloc[0][col_nome_cliente],
+                "telefone": contato,
+                "regiao": cliente.iloc[0][col_regiao] if col_regiao else "Região Desconhecida"
             }
 
         logger.warning(f"❌ Cliente não encontrado: {contato}")
         return None
+
 
     @classmethod
     def limpar_cache(cls):
